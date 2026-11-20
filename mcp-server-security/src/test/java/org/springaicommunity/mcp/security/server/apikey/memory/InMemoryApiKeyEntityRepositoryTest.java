@@ -109,6 +109,62 @@ class InMemoryApiKeyEntityRepositoryTest {
 	}
 
 	@Test
+	void rotatesApiKeyWithoutInvalidatingCurrentKey() {
+		var replacement = ApiKeyEntityImpl.builder()
+			.id("api02")
+			.secret("replacement-secret")
+			.name("replacement key")
+			.authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.read")))
+			.build();
+
+		assertThat(this.repository.rotateApiKey("api01", replacement)).isTrue();
+		assertThat(this.repository.findByKeyId("api01")).isNotNull();
+		assertThat(this.repository.findByKeyId("api02")).isNotNull();
+		assertThat(this.repository.isEnabled("api01")).isTrue();
+		assertThat(this.repository.isEnabled("api02")).isTrue();
+
+		assertThat(this.repository.revokeApiKey("api01")).isTrue();
+		assertThat(this.repository.findByKeyId("api01")).isNull();
+		assertThat(this.repository.findByKeyId("api02")).isNotNull();
+	}
+
+	@Test
+	void rejectsRotationWhenCurrentKeyIsMissingOrDisabled() {
+		var replacement = ApiKeyEntityImpl.builder()
+			.id("api03")
+			.secret("replacement-secret")
+			.name("replacement key")
+			.build();
+
+		assertThat(this.repository.rotateApiKey("missing", replacement)).isFalse();
+		assertThat(this.repository.disableApiKey("api01")).isTrue();
+		assertThat(this.repository.rotateApiKey("api01", replacement)).isFalse();
+		assertThat(this.repository.findByKeyId("api03")).isNull();
+	}
+
+	@Test
+	void rejectsRotationWhenReplacementIdAlreadyExists() {
+		var existing = ApiKeyEntityImpl.builder().id("api02").secret("existing-secret").name("existing key").build();
+		var replacement = ApiKeyEntityImpl.builder()
+			.id("api02")
+			.secret("replacement-secret")
+			.name("replacement key")
+			.build();
+		this.repository.addApiKey(existing);
+
+		assertThat(this.repository.rotateApiKey("api01", replacement)).isFalse();
+		var existingKey = this.repository.findByKeyId("api02");
+		assertThat(existingKey).isNotNull();
+		assertThat(existingKey.getName()).isEqualTo("existing key");
+	}
+
+	@Test
+	void rejectsRotationWhenReplacementUsesCurrentKeyId() {
+		assertThat(this.repository.rotateApiKey("api01", this.apiKeyEntity)).isFalse();
+		assertThat(this.repository.findByKeyId("api01")).isNotNull();
+	}
+
+	@Test
 	void disablesAndEnablesApiKey() {
 		assertThat(this.repository.isEnabled("api01")).isTrue();
 

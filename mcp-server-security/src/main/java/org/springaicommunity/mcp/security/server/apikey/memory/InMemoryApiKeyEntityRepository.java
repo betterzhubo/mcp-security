@@ -23,14 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
-import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityLifecycleRepository;
+import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRotationRepository;
 
 /**
- * In-memory {@link ApiKeyEntityLifecycleRepository} backed by concurrent collections.
+ * In-memory {@link ApiKeyEntityRotationRepository} backed by concurrent collections.
  *
  * @author Daniel Garnier-Moiroux
  */
-public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements ApiKeyEntityLifecycleRepository<T> {
+public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements ApiKeyEntityRotationRepository<T> {
 
 	private final Map<String, T> apiKeys = new ConcurrentHashMap<>();
 
@@ -49,17 +49,37 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 		return key != null ? key.copy() : null;
 	}
 
-	public void addApiKey(T value) {
+	public synchronized void addApiKey(T value) {
 		this.apiKeys.put(value.getId(), value);
 		this.disabledApiKeys.remove(value.getId());
 	}
 
-	public void removeApiKey(String keyId) {
+	public synchronized void removeApiKey(String keyId) {
 		revokeApiKey(keyId);
 	}
 
 	public boolean containsApiKey(String keyId) {
 		return this.apiKeys.containsKey(keyId);
+	}
+
+	/**
+	 * Add a replacement key without interrupting requests authenticated with the current
+	 * key. The current key remains enabled until it is explicitly revoked or disabled.
+	 * @param currentKeyId the ID of the key being rotated
+	 * @param replacement the replacement key
+	 * @return {@code true} when the replacement key was added
+	 */
+	@Override
+	public synchronized boolean rotateApiKey(String currentKeyId, T replacement) {
+		if (currentKeyId == null || currentKeyId.isBlank() || replacement == null
+				|| currentKeyId.equals(replacement.getId()) || !isEnabled(currentKeyId)) {
+			return false;
+		}
+		if (this.apiKeys.putIfAbsent(replacement.getId(), replacement) != null) {
+			return false;
+		}
+		this.disabledApiKeys.remove(replacement.getId());
+		return true;
 	}
 
 	@Override
@@ -68,7 +88,7 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 	}
 
 	@Override
-	public boolean enableApiKey(String keyId) {
+	public synchronized boolean enableApiKey(String keyId) {
 		if (!this.apiKeys.containsKey(keyId)) {
 			return false;
 		}
@@ -77,7 +97,7 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 	}
 
 	@Override
-	public boolean disableApiKey(String keyId) {
+	public synchronized boolean disableApiKey(String keyId) {
 		if (!this.apiKeys.containsKey(keyId)) {
 			return false;
 		}
@@ -86,9 +106,10 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 	}
 
 	@Override
-	public boolean revokeApiKey(String keyId) {
+	public synchronized boolean revokeApiKey(String keyId) {
+		var removed = this.apiKeys.remove(keyId);
 		this.disabledApiKeys.remove(keyId);
-		return this.apiKeys.remove(keyId) != null;
+		return removed != null;
 	}
 
 }
