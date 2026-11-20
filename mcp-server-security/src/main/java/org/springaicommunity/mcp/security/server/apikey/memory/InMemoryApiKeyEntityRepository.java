@@ -26,7 +26,7 @@ import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRotationRepository;
 
 /**
- * In-memory {@link ApiKeyEntityLifecycleRepository} backed by concurrent collections.
+ * In-memory {@link ApiKeyEntityRotationRepository} backed by concurrent collections.
  *
  * @author Daniel Garnier-Moiroux
  */
