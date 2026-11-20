@@ -83,7 +83,7 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 	}
 
 	@Override
-	public synchronized boolean isEnabled(String keyId) {
+	public boolean isEnabled(String keyId) {
 		return this.apiKeys.containsKey(keyId) && !this.disabledApiKeys.contains(keyId);
 	}
 
@@ -107,8 +107,9 @@ public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements A
 
 	@Override
 	public synchronized boolean revokeApiKey(String keyId) {
+		var removed = this.apiKeys.remove(keyId);
 		this.disabledApiKeys.remove(keyId);
-		return this.apiKeys.remove(keyId) != null;
+		return removed != null;
 	}
 
 }
