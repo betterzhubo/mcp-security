@@ -69,8 +69,8 @@ class HistoricalWeatherServiceAuthorizationTests {
 	@Test
 	@WithMockUser(authorities = "SCOPE_weather.read")
 	void allowsCallWithWeatherReadScope() {
-		this.mockServer.expect(ExpectedCount.times(5),
-				requestTo(startsWith("https://archive-api.open-meteo.com/v1/archive")))
+		this.mockServer
+			.expect(ExpectedCount.times(5), requestTo(startsWith("https://archive-api.open-meteo.com/v1/archive")))
 			.andRespond(withSuccess(WEATHER_RESPONSE, MediaType.APPLICATION_JSON));
 
 		var result = this.weatherService.getHistoricalWeatherData(51.5, -0.12);

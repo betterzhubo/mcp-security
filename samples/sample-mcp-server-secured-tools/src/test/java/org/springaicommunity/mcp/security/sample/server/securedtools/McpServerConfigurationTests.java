@@ -34,8 +34,8 @@ class McpServerConfigurationTests {
 		CorsConfiguration configuration = source.getCorsConfiguration(new MockHttpServletRequest("OPTIONS", "/mcp"));
 
 		assertThat(configuration).isNotNull();
-		assertThat(configuration.getAllowedOriginPatterns())
-			.containsExactly("http://localhost:6274", "https://console.example.com");
+		assertThat(configuration.getAllowedOriginPatterns()).containsExactly("http://localhost:6274",
+				"https://console.example.com");
 		assertThat(configuration.getAllowedMethods()).containsExactly("GET", "POST", "DELETE", "OPTIONS");
 		assertThat(configuration.getAllowedHeaders()).contains("Authorization", "Content-Type", "Mcp-Session-Id",
 				"Mcp-Protocol-Version", "Last-Event-ID");
@@ -46,8 +46,8 @@ class McpServerConfigurationTests {
 
 	@Test
 	void corsConfigurationRejectsGlobalWildcardWithCredentials() {
-		assertThatIllegalArgumentException().isThrownBy(
-				() -> new McpServerConfiguration().corsConfigurationSource(List.of("*")));
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> new McpServerConfiguration().corsConfigurationSource(List.of("*")));
 	}
 
 }

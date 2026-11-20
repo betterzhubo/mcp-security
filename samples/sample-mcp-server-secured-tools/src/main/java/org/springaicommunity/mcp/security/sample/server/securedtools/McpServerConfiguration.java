@@ -64,8 +64,8 @@ class McpServerConfiguration {
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowedOriginPatterns(allowedOriginPatterns.stream().map(String::trim).toList());
 		configuration.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
-		configuration.setAllowedHeaders(List.of("Accept", "Authorization", "Content-Type", "Origin",
-				"Mcp-Session-Id", "Mcp-Protocol-Version", "Last-Event-ID"));
+		configuration.setAllowedHeaders(List.of("Accept", "Authorization", "Content-Type", "Origin", "Mcp-Session-Id",
+				"Mcp-Protocol-Version", "Last-Event-ID"));
 		configuration.setExposedHeaders(List.of("Mcp-Session-Id", "Mcp-Protocol-Version", "WWW-Authenticate"));
 		configuration.setAllowCredentials(true);
 
