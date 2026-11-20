@@ -20,6 +20,7 @@ import java.time.Clock;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityLifecycleRepository;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRepository;
 
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -75,6 +76,10 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 
 		T loggedInEntity = this.apiKeyEntityRepository.findByKeyId(apiKey.getId());
 		if (loggedInEntity == null) {
+			throw new BadCredentialsException("Invalid API key");
+		}
+		if (this.apiKeyEntityRepository instanceof ApiKeyEntityLifecycleRepository<?> lifecycleRepository
+				&& !lifecycleRepository.isEnabled(apiKey.getId())) {
 			throw new BadCredentialsException("Invalid API key");
 		}
 		if (!passwordEncoder.matches(apiKey.getSecret(), loggedInEntity.getSecret())) {
