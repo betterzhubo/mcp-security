@@ -305,6 +305,32 @@ credentials. Existing `ApiKeyEntityRepository` implementations remain compatible
 enable/disable/revoke operations are available only when the repository implements the lifecycle
 interface.
 
+Repositories that support API key rotation can implement `ApiKeyEntityRotationRepository`.
+The built-in in-memory repository supports a two-step migration so clients can move without
+an authentication outage:
+
+```java
+var replacement = ApiKeyEntityImpl.builder()
+    .id("api02")
+    .secret(newSecret) // Generate and deliver this secret through a secure channel
+    .name("replacement key")
+    .authorities(existingAuthorities)
+    .build();
+
+// Step 1: add the replacement while the current key remains valid
+repository.rotateApiKey("api01", replacement);
+
+// Step 2: after all clients have migrated, revoke the previous key
+repository.revokeApiKey("api01");
+```
+
+Rotation requires an existing, enabled current key and a replacement with a different,
+unused ID. A failed rotation does not modify either key. Both keys remain enabled after a
+successful rotation; the repository does not revoke the previous key automatically. The caller
+is responsible for generating a strong replacement secret, distributing it securely, confirming
+client migration, and then revoking the old key. Existing repositories that implement only
+`ApiKeyEntityRepository` or `ApiKeyEntityLifecycleRepository` remain compatible.
+
 > ⚠️ The `InMemoryApiKeyEntityRepository` uses on bcrypt for storing the API keys, and, as such, will be computationally
 > expensive. It is not suited for high-traffic production use. In that case, you must ship your own
 > `ApiKeyEntityRepository`  implementation.
