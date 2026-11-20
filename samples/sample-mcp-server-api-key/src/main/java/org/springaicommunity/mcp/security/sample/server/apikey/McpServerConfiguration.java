@@ -26,6 +26,8 @@ import org.springaicommunity.mcp.security.server.config.McpApiKeyConfigurer;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -38,6 +40,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 class McpServerConfiguration {
 
 	@Bean
@@ -49,16 +52,21 @@ class McpServerConfiguration {
 	}
 
 	private ApiKeyEntityRepository<@NonNull ApiKeyEntityImpl> buildApiKeyRepository() {
-		//@formatter:off
-        var apiKey = ApiKeyEntityImpl.builder()
-                .name("test api key")
-                .id("api01")
-                // "mycustomapikey
-                .secret("mycustomapikey")
-                .build();
-        //@formatter:on
+		var readKey = ApiKeyEntityImpl.builder()
+			.name("weather read api key")
+			.id("api01")
+			.secret("mycustomapikey")
+			.authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.read")))
+			.build();
 
-		return new InMemoryApiKeyEntityRepository<>(List.of(apiKey));
+		var writeOnlyKey = ApiKeyEntityImpl.builder()
+			.name("weather write-only api key")
+			.id("api02")
+			.secret("writeonlyapikey")
+			.authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.write")))
+			.build();
+
+		return new InMemoryApiKeyEntityRepository<>(List.of(readKey, writeOnlyKey));
 	}
 
 	public CorsConfigurationSource corsConfigurationSource() {
