@@ -16,6 +16,9 @@
 
 package org.springaicommunity.mcp.security.server.apikey.authentication;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -23,14 +26,18 @@ import org.springaicommunity.mcp.security.server.apikey.ApiKeyImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.InMemoryApiKeyEntityRepository;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests for {@link ApiKeyAuthenticationProvider}.
  */
 class ApiKeyAuthenticationProviderTests {
+
+	private static final Instant NOW = Instant.parse("2026-11-20T08:00:00Z");
 
 	@Test
 	void authenticatedApiKeyCarriesConfiguredAuthorities() {
@@ -42,7 +49,7 @@ class ApiKeyAuthenticationProviderTests {
 			.authorities(List.of(readAuthority))
 			.build();
 		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
-		var provider = new ApiKeyAuthenticationProvider<>(repository);
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
 
 		var authentication = provider
 			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("api01.test-secret")));
@@ -51,6 +58,58 @@ class ApiKeyAuthenticationProviderTests {
 		assertThat(authentication.isAuthenticated()).isTrue();
 		assertThat(authentication.getAuthorities()).hasSize(1);
 		assertThat(authentication.getAuthorities().iterator().next().getAuthority()).isEqualTo("SCOPE_weather.read");
+	}
+
+	@Test
+	void rejectsExpiredApiKey() {
+		var expiredKey = ApiKeyEntityImpl.builder()
+			.id("expired")
+			.secret("test-secret")
+			.name("expired key")
+			.expiresAt(NOW.minusSeconds(1))
+			.build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(expiredKey));
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+
+		assertThatThrownBy(() -> provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("expired.test-secret"))))
+			.isInstanceOf(BadCredentialsException.class)
+			.hasMessage("API key has expired");
+	}
+
+	@Test
+	void rejectsApiKeyAtExactExpirationInstant() {
+		var expiringKey = ApiKeyEntityImpl.builder()
+			.id("expiring")
+			.secret("test-secret")
+			.name("expiring key")
+			.expiresAt(NOW)
+			.build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(expiringKey));
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+
+		assertThatThrownBy(() -> provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("expiring.test-secret"))))
+			.isInstanceOf(BadCredentialsException.class)
+			.hasMessage("API key has expired");
+	}
+
+	@Test
+	void acceptsApiKeyBeforeExpirationInstant() {
+		var validKey = ApiKeyEntityImpl.builder()
+			.id("valid")
+			.secret("test-secret")
+			.name("valid key")
+			.expiresAt(NOW.plusSeconds(1))
+			.build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(validKey));
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+
+		var authentication = provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("valid.test-secret")));
+
+		assertThat(authentication).isNotNull();
+		assertThat(authentication.isAuthenticated()).isTrue();
 	}
 
 }
