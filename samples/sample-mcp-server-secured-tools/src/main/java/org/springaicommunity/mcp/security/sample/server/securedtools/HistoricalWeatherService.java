@@ -37,8 +37,8 @@ public class HistoricalWeatherService {
 
 	private final RestClient restClient;
 
-	public HistoricalWeatherService() {
-		this.restClient = RestClient.create();
+	public HistoricalWeatherService(RestClient.Builder restClientBuilder) {
+		this.restClient = restClientBuilder.build();
 	}
 
 	/**
@@ -54,7 +54,7 @@ public class HistoricalWeatherService {
 		}
 	}
 
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasAuthority('SCOPE_weather.read')")
 	@McpTool(name = "temperature-history",
 			description = "Get 5-year historical temperature data (in Celsius), including daily min and daily max temperatures, for a specific location")
 	public ToolResponse getHistoricalWeatherData(@ToolParam(description = "The location latitude") double latitude,
