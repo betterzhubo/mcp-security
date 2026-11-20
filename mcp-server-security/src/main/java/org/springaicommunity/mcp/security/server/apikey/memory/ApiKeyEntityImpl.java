@@ -16,9 +16,13 @@
 
 package org.springaicommunity.mcp.security.server.apikey.memory;
 
+import java.util.Collection;
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
 
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.Assert;
@@ -36,10 +40,14 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 
 	private final String name;
 
-	private ApiKeyEntityImpl(String id, @Nullable String secret, String name) {
+	private final List<GrantedAuthority> authorities;
+
+	private ApiKeyEntityImpl(String id, @Nullable String secret, String name,
+			Collection<? extends GrantedAuthority> authorities) {
 		this.id = id;
 		this.secret = secret;
 		this.name = name;
+		this.authorities = List.copyOf(authorities);
 	}
 
 	@Override
@@ -57,13 +65,18 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 	}
 
 	@Override
+	public List<GrantedAuthority> getAuthorities() {
+		return authorities;
+	}
+
+	@Override
 	public void eraseCredentials() {
 		this.secret = null;
 	}
 
 	@Override
 	public ApiKeyEntityImpl copy() {
-		return new ApiKeyEntityImpl(this.id, this.secret, this.name);
+		return new ApiKeyEntityImpl(this.id, this.secret, this.name, this.authorities);
 	}
 
 	public static Builder builder() {
@@ -77,6 +90,8 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 		public @Nullable String secret;
 
 		public @Nullable String name;
+
+		private List<GrantedAuthority> authorities = List.of();
 
 		private PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 
@@ -106,11 +121,23 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 			return this;
 		}
 
+		/**
+		 * Configure the authorities granted to this API key. Authorities are copied
+		 * when configured and exposed as an immutable list.
+		 * @param authorities the authorities granted to this API key
+		 * @return the builder
+		 */
+		public Builder authorities(Collection<? extends GrantedAuthority> authorities) {
+			Assert.notNull(authorities, "authorities must not be null");
+			this.authorities = List.copyOf(authorities);
+			return this;
+		}
+
 		public ApiKeyEntityImpl build() {
 			Assert.hasText(id, "id must not be blank");
 			Assert.hasText(secret, "secret must not be blank");
 			Assert.hasText(name, "name must not be blank");
-			return new ApiKeyEntityImpl(id, this.passwordEncoder.encode(secret), name);
+			return new ApiKeyEntityImpl(id, this.passwordEncoder.encode(secret), name, this.authorities);
 		}
 
 	}
