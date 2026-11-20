@@ -198,8 +198,19 @@ ApiKeyEntityImpl.builder()
     .secret("mycustomapikey")
     .name("weather read api key")
     .authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.read")))
+    .expiresAt(Instant.parse("2030-01-01T00:00:00Z"))
     .build();
 ```
+
+### API Key Expiration
+
+API keys may optionally be assigned an expiration instant with `expiresAt(Instant)`. The
+authentication provider rejects a key when the current instant is equal to or later than its
+expiration time. Keys without an expiration remain valid until they are removed from the repository.
+
+The expiration is checked on every authentication attempt. Existing custom `ApiKeyEntity`
+implementations remain compatible and non-expiring by default. For deterministic tests, the
+authentication provider also supports a constructor that accepts a `java.time.Clock`.
 
 ### Testing with curl
 
