@@ -17,9 +17,8 @@
 package org.springaicommunity.mcp.security.server.apikey;
 
 /**
- * Optional lifecycle operations for repositories that manage API key activation and revocation.
- *
- * @author OpenAI
+ * Optional lifecycle operations for repositories that manage API key activation and
+ * revocation.
  */
 public interface ApiKeyEntityLifecycleRepository<T extends ApiKeyEntity> extends ApiKeyEntityRepository<T> {
 
