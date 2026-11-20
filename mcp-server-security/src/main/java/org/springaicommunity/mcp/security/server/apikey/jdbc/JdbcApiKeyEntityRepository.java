@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
-import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRotationRepository;
+import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityManagementRepository;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,7 +39,7 @@ import org.springframework.util.Assert;
  * entity's configured {@code PasswordEncoder}.
  *
  */
-public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepository<ApiKeyEntity> {
+public class JdbcApiKeyEntityRepository implements ApiKeyEntityManagementRepository<ApiKeyEntity> {
 
 	private static final RowMapper<KeyRow> KEY_ROW_MAPPER = (rs, rowNum) -> {
 		@Nullable Timestamp expiresAt = rs.getTimestamp("expires_at");
