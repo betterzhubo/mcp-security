@@ -1,5 +1,6 @@
 package org.springaicommunity.mcp.security.server.apikey.memory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,6 +18,7 @@ class InMemoryApiKeyEntityRepositoryTest {
 		.secret("test-secret")
 		.name("test key")
 		.authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.read")))
+		.expiresAt(Instant.parse("2030-01-01T00:00:00Z"))
 		.build();
 
 	private final InMemoryApiKeyEntityRepository<@NonNull ApiKeyEntityImpl> repository = new InMemoryApiKeyEntityRepository<>(
@@ -32,6 +34,7 @@ class InMemoryApiKeyEntityRepositoryTest {
 		assertThat(key.getSecret()).isEqualTo(this.apiKeyEntity.getSecret());
 		assertThat(key.getName()).isEqualTo(this.apiKeyEntity.getName());
 		assertThat(key.getAuthorities()).containsExactlyElementsOf(this.apiKeyEntity.getAuthorities());
+		assertThat(key.getExpiresAt()).isEqualTo(this.apiKeyEntity.getExpiresAt());
 		assertThatThrownBy(() -> key.getAuthorities().add(new SimpleGrantedAuthority("SCOPE_weather.write")))
 			.isInstanceOf(UnsupportedOperationException.class);
 	}
