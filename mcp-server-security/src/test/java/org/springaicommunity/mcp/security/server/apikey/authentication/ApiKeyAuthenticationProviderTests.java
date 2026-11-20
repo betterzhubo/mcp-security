@@ -96,11 +96,7 @@ class ApiKeyAuthenticationProviderTests {
 
 	@Test
 	void rejectsDisabledApiKey() {
-		var apiKeyEntity = ApiKeyEntityImpl.builder()
-			.id("disabled")
-			.secret("test-secret")
-			.name("disabled key")
-			.build();
+		var apiKeyEntity = ApiKeyEntityImpl.builder().id("disabled").secret("test-secret").name("disabled key").build();
 		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
 		repository.disableApiKey("disabled");
 		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
@@ -113,11 +109,7 @@ class ApiKeyAuthenticationProviderTests {
 
 	@Test
 	void rejectsRevokedApiKey() {
-		var apiKeyEntity = ApiKeyEntityImpl.builder()
-			.id("revoked")
-			.secret("test-secret")
-			.name("revoked key")
-			.build();
+		var apiKeyEntity = ApiKeyEntityImpl.builder().id("revoked").secret("test-secret").name("revoked key").build();
 		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
 		repository.revokeApiKey("revoked");
 		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
