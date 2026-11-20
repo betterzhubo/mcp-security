@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2025 the original author or authors.
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,11 @@
 
 package org.springaicommunity.mcp.security.server.apikey;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,6 +35,14 @@ public interface ApiKeyEntity extends ApiKey, CredentialsContainer {
 
 	default List<GrantedAuthority> getAuthorities() {
 		return Collections.emptyList();
+	}
+
+	/**
+	 * Return the instant at which this API key expires, or {@code null} if it does not expire.
+	 * @return the expiration instant, or {@code null} for a key without an expiration
+	 */
+	default @Nullable Instant getExpiresAt() {
+		return null;
 	}
 
 	<T extends ApiKeyEntity> T copy();
