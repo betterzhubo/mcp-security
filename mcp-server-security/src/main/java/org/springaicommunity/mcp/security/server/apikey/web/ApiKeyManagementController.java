@@ -149,8 +149,7 @@ public class ApiKeyManagementController {
 		if (!this.repository.isEnabled(keyId)) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Disabled API keys cannot be rotated");
 		}
-		List<String> requestedAuthorities = request != null && request.authorities() != null
-				? request.authorities()
+		List<String> requestedAuthorities = request != null && request.authorities() != null ? request.authorities()
 				: current.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 		List<GrantedAuthority> authorities = validateAuthorities(requestedAuthorities);
 		GeneratedKey replacement = generateKey(authorities, current.getExpiresAt());
