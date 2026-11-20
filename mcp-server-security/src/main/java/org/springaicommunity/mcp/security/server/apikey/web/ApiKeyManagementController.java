@@ -111,8 +111,7 @@ public class ApiKeyManagementController {
 	}
 
 	@PostMapping("/{keyId}/enable")
-	public ApiKeyMetadataResponse enable(@PathVariable String keyId,
-			@Nullable Authentication authentication) {
+	public ApiKeyMetadataResponse enable(@PathVariable String keyId, @Nullable Authentication authentication) {
 		requireManagementAuthority(authentication);
 		if (!this.repository.enableApiKey(keyId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
@@ -121,8 +120,7 @@ public class ApiKeyManagementController {
 	}
 
 	@PostMapping("/{keyId}/disable")
-	public ApiKeyMetadataResponse disable(@PathVariable String keyId,
-			@Nullable Authentication authentication) {
+	public ApiKeyMetadataResponse disable(@PathVariable String keyId, @Nullable Authentication authentication) {
 		requireManagementAuthority(authentication);
 		if (!this.repository.disableApiKey(keyId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
@@ -131,8 +129,7 @@ public class ApiKeyManagementController {
 	}
 
 	@DeleteMapping("/{keyId}")
-	public ResponseEntity<Void> revoke(@PathVariable String keyId,
-			@Nullable Authentication authentication) {
+	public ResponseEntity<Void> revoke(@PathVariable String keyId, @Nullable Authentication authentication) {
 		requireManagementAuthority(authentication);
 		if (!this.repository.revokeApiKey(keyId)) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
@@ -171,8 +168,7 @@ public class ApiKeyManagementController {
 
 	private ApiKeyMetadataResponse metadata(ApiKeyEntity entity) {
 		return new ApiKeyMetadataResponse(entity.getId(), this.repository.isEnabled(entity.getId()),
-				entity.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList(),
-				entity.getExpiresAt());
+				entity.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList(), entity.getExpiresAt());
 	}
 
 	private GeneratedKey generateKey(List<GrantedAuthority> authorities, @Nullable Instant expiresAt) {
@@ -211,8 +207,7 @@ public class ApiKeyManagementController {
 						"The API key management authority cannot be delegated");
 			}
 		}
-		return distinctAuthorities.stream().map(SimpleGrantedAuthority::new).map(GrantedAuthority.class::cast)
-			.toList();
+		return distinctAuthorities.stream().map(SimpleGrantedAuthority::new).map(GrantedAuthority.class::cast).toList();
 	}
 
 	private @Nullable Instant validateExpiration(@Nullable Instant expiresAt) {
