@@ -137,8 +137,8 @@ class ApiKeyManagementControllerTests {
 			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
 				.isEqualTo(HttpStatus.NOT_FOUND));
 
-		var created = Objects.requireNonNull(this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
+		var created = Objects.requireNonNull(this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
 			.getBody());
 		this.repository.disableApiKey(created.keyId());
 
