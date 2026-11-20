@@ -33,8 +33,8 @@ public class WeatherService {
 
 	private final RestClient restClient;
 
-	public WeatherService() {
-		this.restClient = RestClient.create();
+	public WeatherService(RestClient.Builder restClientBuilder) {
+		this.restClient = restClientBuilder.build();
 	}
 
 	/**
@@ -45,7 +45,7 @@ public class WeatherService {
 		}
 	}
 
-	@PreAuthorize("isAuthenticated()")
+	@PreAuthorize("hasAuthority('SCOPE_weather.read')")
 	@McpTool(name = "current-temperature",
 			description = "Get the current temperature (in celsius) for a specific location")
 	public WeatherResponse getTemperature(@ToolParam(description = "The location latitude") double latitude,
