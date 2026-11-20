@@ -54,8 +54,9 @@ class JdbcApiKeyEntityRepositoryTests {
 		this.dataSource.setUrl("jdbc:h2:mem:api-keys-" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
 		this.dataSource.setUsername("sa");
 		this.dataSource.setPassword("");
-		new ResourceDatabasePopulator(new ClassPathResource(
-				"org/springaicommunity/mcp/security/server/apikey/jdbc/schema.sql")).execute(this.dataSource);
+		new ResourceDatabasePopulator(
+				new ClassPathResource("org/springaicommunity/mcp/security/server/apikey/jdbc/schema.sql"))
+			.execute(this.dataSource);
 		this.jdbcTemplate = new JdbcTemplate(this.dataSource);
 		this.repository = new JdbcApiKeyEntityRepository(this.jdbcTemplate,
 				new DataSourceTransactionManager(this.dataSource));
@@ -105,8 +106,7 @@ class JdbcApiKeyEntityRepositoryTests {
 
 		assertThat(authentication).isNotNull();
 		assertThat(authentication.isAuthenticated()).isTrue();
-		assertThat(authentication.getAuthorities())
-			.containsExactly(new SimpleGrantedAuthority("SCOPE_weather.read"));
+		assertThat(authentication.getAuthorities()).containsExactly(new SimpleGrantedAuthority("SCOPE_weather.read"));
 	}
 
 	@Test
@@ -160,8 +160,7 @@ class JdbcApiKeyEntityRepositoryTests {
 			.id("new-key")
 			.secret("new-secret")
 			.name("new key")
-			.authorities(List.of(new SimpleGrantedAuthority("SCOPE_read"),
-					new SimpleGrantedAuthority("SCOPE_read")))
+			.authorities(List.of(new SimpleGrantedAuthority("SCOPE_read"), new SimpleGrantedAuthority("SCOPE_read")))
 			.build();
 
 		assertThat(this.repository.rotateApiKey("old-key", replacement)).isFalse();
