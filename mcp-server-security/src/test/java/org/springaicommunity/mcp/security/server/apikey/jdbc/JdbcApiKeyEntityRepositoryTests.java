@@ -34,6 +34,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -106,7 +107,8 @@ class JdbcApiKeyEntityRepositoryTests {
 
 		assertThat(authentication).isNotNull();
 		assertThat(authentication.isAuthenticated()).isTrue();
-		assertThat(authentication.getAuthorities()).containsExactly(new SimpleGrantedAuthority("SCOPE_weather.read"));
+		assertThat(authentication.getAuthorities()).extracting(GrantedAuthority::getAuthority)
+			.containsExactly("SCOPE_weather.read");
 	}
 
 	@Test
