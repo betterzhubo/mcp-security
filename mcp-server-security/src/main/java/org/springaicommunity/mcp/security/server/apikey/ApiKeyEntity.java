@@ -26,7 +26,8 @@ import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 
 /**
- * A stored API key, exposing its granted authorities and able to produce a defensive copy of itself.
+ * A stored API key, exposing its granted authorities and able to produce a defensive copy
+ * of itself.
  *
  * @author Daniel Garnier-Moiroux
  */
