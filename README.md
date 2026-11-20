@@ -331,9 +331,31 @@ is responsible for generating a strong replacement secret, distributing it secur
 client migration, and then revoking the old key. Existing repositories that implement only
 `ApiKeyEntityRepository` or `ApiKeyEntityLifecycleRepository` remain compatible.
 
-> ⚠️ The `InMemoryApiKeyEntityRepository` uses on bcrypt for storing the API keys, and, as such, will be computationally
-> expensive. It is not suited for high-traffic production use. In that case, you must ship your own
-> `ApiKeyEntityRepository`  implementation.
+> ⚠️ The `InMemoryApiKeyEntityRepository` is intended for samples and lightweight use. For
+> production deployments that need durable storage, use a database-backed repository.
+
+### JDBC API Key Repository
+
+The optional `JdbcApiKeyEntityRepository` implementation persists API key hashes, authorities,
+expiration timestamps, and enabled state. It supports disable/enable, revocation, and transactional
+overlapping rotation. Add the `spring-jdbc` dependency to the application that uses this repository.
+
+Create the tables using the supplied schema at
+`org/springaicommunity/mcp/security/server/apikey/jdbc/schema.sql`. The schema uses standard
+JDBC-compatible SQL types and can be applied by your database migration tool.
+
+```java
+@Bean
+JdbcApiKeyEntityRepository apiKeyEntityRepository(JdbcTemplate jdbcTemplate,
+        PlatformTransactionManager transactionManager) {
+    return new JdbcApiKeyEntityRepository(jdbcTemplate, transactionManager);
+}
+```
+
+Store entities created with a configured `PasswordEncoder`; the repository persists the encoded
+secret and never needs the plaintext secret. For example, `ApiKeyEntityImpl.builder()` encodes
+the supplied secret before it reaches the repository. Keep the same compatible `PasswordEncoder`
+configuration in the authentication provider.
 
 With that, you can configure the security for your project in the usual Spring-Security way:
 
