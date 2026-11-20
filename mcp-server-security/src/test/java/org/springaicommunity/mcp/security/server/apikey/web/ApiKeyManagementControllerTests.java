@@ -6,11 +6,13 @@ import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.InMemoryApiKeyEntityRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,8 +39,8 @@ class ApiKeyManagementControllerTests {
 
 	@Test
 	void createsApiKeyAndReturnsPlaintextSecretOnlyAtCreation() {
-		var response = this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN);
+		var response = this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN);
 		var body = Objects.requireNonNull(response.getBody());
 		ApiKeyEntity stored = Objects.requireNonNull(this.repository.findByKeyId(body.keyId()));
 
@@ -46,8 +48,9 @@ class ApiKeyManagementControllerTests {
 		assertThat(body.keyId()).startsWith("mcp_");
 		assertThat(body.secret()).isNotBlank();
 		assertThat(stored.getSecret()).isNotEqualTo(body.secret());
-		assertThat(PasswordEncoderFactories.createDelegatingPasswordEncoder()
-			.matches(body.secret(), stored.getSecret())).isTrue();
+		assertThat(
+				PasswordEncoderFactories.createDelegatingPasswordEncoder().matches(body.secret(), stored.getSecret()))
+			.isTrue();
 		assertThat(body.authorities()).containsExactly("SCOPE_weather.read");
 
 		var metadata = this.controller.get(body.keyId(), ADMIN);
@@ -58,17 +61,16 @@ class ApiKeyManagementControllerTests {
 
 	@Test
 	void rejectsMissingManagementAuthority() {
-		assertThatThrownBy(() -> this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), USER))
+		assertThatThrownBy(() -> this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), USER))
 			.isInstanceOf(AccessDeniedException.class);
 		assertThat(this.repository.findByKeyId("any-key")).isNull();
 	}
 
 	@Test
 	void rejectsDelegatingManagementAuthority() {
-		assertThatThrownBy(() -> this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(
-						List.of(ApiKeyManagementController.MANAGEMENT_AUTHORITY), null), ADMIN))
+		assertThatThrownBy(() -> this.controller.create(new ApiKeyManagementController.CreateApiKeyRequest(
+				List.of(ApiKeyManagementController.MANAGEMENT_AUTHORITY), null), ADMIN))
 			.isInstanceOf(ResponseStatusException.class)
 			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
 				.isEqualTo(HttpStatus.BAD_REQUEST));
@@ -94,8 +96,8 @@ class ApiKeyManagementControllerTests {
 
 	@Test
 	void enablesDisablesAndRevokesApiKey() {
-		var created = Objects.requireNonNull(this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
+		var created = Objects.requireNonNull(this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
 			.getBody());
 
 		var disabled = this.controller.disable(created.keyId(), ADMIN);
@@ -111,8 +113,8 @@ class ApiKeyManagementControllerTests {
 
 	@Test
 	void rotatesKeyWithoutInvalidatingTheCurrentKey() {
-		var original = Objects.requireNonNull(this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
+		var original = Objects.requireNonNull(this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
 			.getBody());
 
 		var replacementResponse = this.controller.rotate(original.keyId(), null, ADMIN);
@@ -137,8 +139,8 @@ class ApiKeyManagementControllerTests {
 			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
 				.isEqualTo(HttpStatus.NOT_FOUND));
 
-		var created = Objects.requireNonNull(this.controller.create(
-				new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
+		var created = Objects.requireNonNull(this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
 			.getBody());
 		this.repository.disableApiKey(created.keyId());
 
@@ -146,6 +148,23 @@ class ApiKeyManagementControllerTests {
 			.isInstanceOf(ResponseStatusException.class)
 			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
 				.isEqualTo(HttpStatus.CONFLICT));
+	}
+
+	@Test
+	void doesNotInheritManagementAuthorityWhenRotatingAnAdministrativeKey() {
+		ApiKeyEntityImpl administrativeKey = ApiKeyEntityImpl.builder()
+			.id("admin-key")
+			.secret("admin-secret")
+			.name("administrative key")
+			.authorities(List.of(new SimpleGrantedAuthority(ApiKeyManagementController.MANAGEMENT_AUTHORITY)))
+			.build();
+		this.repository.addApiKey(administrativeKey);
+
+		assertThatThrownBy(() -> this.controller.rotate("admin-key", null, ADMIN))
+			.isInstanceOf(ResponseStatusException.class)
+			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
+				.isEqualTo(HttpStatus.BAD_REQUEST));
+		assertThat(this.repository.findByKeyId("admin-key")).isNotNull();
 	}
 
 }
