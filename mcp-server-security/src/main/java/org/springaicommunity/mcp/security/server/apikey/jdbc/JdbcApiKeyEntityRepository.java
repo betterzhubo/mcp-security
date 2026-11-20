@@ -27,6 +27,7 @@ import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRotationRepo
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -67,7 +68,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 			return null;
 		}
 		KeyRow row = rows.get(0);
-		List<SimpleGrantedAuthority> authorities = this.jdbcTemplate.query(
+		List<GrantedAuthority> authorities = this.jdbcTemplate.query(
 				"SELECT authority FROM mcp_api_key_authorities WHERE key_id = ? ORDER BY authority",
 				(rs, rowNum) -> new SimpleGrantedAuthority(rs.getString("authority")), keyId);
 		return new JdbcApiKeyEntity(row.keyId(), row.secretHash(), authorities, row.expiresAt());
@@ -117,16 +118,17 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 		try {
 			Boolean rotated = this.transactionTemplate.execute(status -> {
 				if (currentKeyId == null || currentKeyId.isBlank() || currentKeyId.equals(replacement.getId())
-						|| !isEnabled(currentKeyId)) {
+						|| !isEnabledForUpdate(currentKeyId)) {
 					return false;
 				}
 				try {
-					insertEntity(replacement);
-					return true;
+					insertKey(replacement);
 				}
 				catch (DuplicateKeyException ex) {
 					return false;
 				}
+				insertAuthorities(replacement);
+				return true;
 			});
 			return Boolean.TRUE.equals(rotated);
 		}
@@ -135,13 +137,28 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 		}
 	}
 
+	private boolean isEnabledForUpdate(String keyId) {
+		List<Boolean> values = this.jdbcTemplate.query(
+				"SELECT enabled FROM mcp_api_keys WHERE key_id = ? FOR UPDATE",
+				(rs, rowNum) -> rs.getBoolean("enabled"), keyId);
+		return !values.isEmpty() && values.get(0);
+	}
+
 	private void insertEntity(ApiKeyEntity entity) {
-		String secretHash = entity.getSecret();
+		insertKey(entity);
+		insertAuthorities(entity);
+	}
+
+	private void insertKey(ApiKeyEntity entity) {
+		@Nullable String secretHash = entity.getSecret();
 		Assert.hasText(secretHash, "entity secret must not be null or blank");
 		Instant expiresAt = entity.getExpiresAt();
 		this.jdbcTemplate.update(
 				"INSERT INTO mcp_api_keys (key_id, secret_hash, expires_at, enabled) VALUES (?, ?, ?, TRUE)",
 				entity.getId(), secretHash, expiresAt != null ? Timestamp.from(expiresAt) : null);
+	}
+
+	private void insertAuthorities(ApiKeyEntity entity) {
 		for (var authority : entity.getAuthorities()) {
 			this.jdbcTemplate.update(
 					"INSERT INTO mcp_api_key_authorities (key_id, authority) VALUES (?, ?)",
@@ -158,11 +175,11 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 
 		private @Nullable String secret;
 
-		private final List<SimpleGrantedAuthority> authorities;
+		private final List<GrantedAuthority> authorities;
 
 		private final @Nullable Instant expiresAt;
 
-		private JdbcApiKeyEntity(String id, @Nullable String secret, List<SimpleGrantedAuthority> authorities,
+		private JdbcApiKeyEntity(String id, @Nullable String secret, List<GrantedAuthority> authorities,
 				@Nullable Instant expiresAt) {
 			this.id = id;
 			this.secret = secret;
@@ -181,7 +198,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 		}
 
 		@Override
-		public List<SimpleGrantedAuthority> getAuthorities() {
+		public List<GrantedAuthority> getAuthorities() {
 			return this.authorities;
 		}
 
