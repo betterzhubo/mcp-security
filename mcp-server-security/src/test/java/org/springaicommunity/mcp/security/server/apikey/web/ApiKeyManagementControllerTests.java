@@ -6,11 +6,13 @@ import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.InMemoryApiKeyEntityRepository;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -146,6 +148,23 @@ class ApiKeyManagementControllerTests {
 			.isInstanceOf(ResponseStatusException.class)
 			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
 				.isEqualTo(HttpStatus.CONFLICT));
+	}
+
+	@Test
+	void doesNotInheritManagementAuthorityWhenRotatingAnAdministrativeKey() {
+		ApiKeyEntityImpl administrativeKey = ApiKeyEntityImpl.builder()
+			.id("admin-key")
+			.secret("admin-secret")
+			.name("administrative key")
+			.authorities(List.of(new SimpleGrantedAuthority(ApiKeyManagementController.MANAGEMENT_AUTHORITY)))
+			.build();
+		this.repository.addApiKey(administrativeKey);
+
+		assertThatThrownBy(() -> this.controller.rotate("admin-key", null, ADMIN))
+			.isInstanceOf(ResponseStatusException.class)
+			.satisfies(exception -> assertThat(((ResponseStatusException) exception).getStatusCode())
+				.isEqualTo(HttpStatus.BAD_REQUEST));
+		assertThat(this.repository.findByKeyId("admin-key")).isNotNull();
 	}
 
 }
