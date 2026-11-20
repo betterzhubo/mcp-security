@@ -16,6 +16,7 @@
 
 package org.springaicommunity.mcp.security.server.apikey.memory;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -42,12 +43,15 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 
 	private final List<GrantedAuthority> authorities;
 
+	private final @Nullable Instant expiresAt;
+
 	private ApiKeyEntityImpl(String id, @Nullable String secret, String name,
-			Collection<? extends GrantedAuthority> authorities) {
+			Collection<? extends GrantedAuthority> authorities, @Nullable Instant expiresAt) {
 		this.id = id;
 		this.secret = secret;
 		this.name = name;
 		this.authorities = List.copyOf(authorities);
+		this.expiresAt = expiresAt;
 	}
 
 	@Override
@@ -70,13 +74,18 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 	}
 
 	@Override
+	public @Nullable Instant getExpiresAt() {
+		return expiresAt;
+	}
+
+	@Override
 	public void eraseCredentials() {
 		this.secret = null;
 	}
 
 	@Override
 	public ApiKeyEntityImpl copy() {
-		return new ApiKeyEntityImpl(this.id, this.secret, this.name, this.authorities);
+		return new ApiKeyEntityImpl(this.id, this.secret, this.name, this.authorities, this.expiresAt);
 	}
 
 	public static Builder builder() {
@@ -92,6 +101,8 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 		public @Nullable String name;
 
 		private List<GrantedAuthority> authorities = List.of();
+
+		private @Nullable Instant expiresAt;
 
 		private PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 
@@ -133,11 +144,24 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 			return this;
 		}
 
+		/**
+		 * Configure when this API key expires. A key without an expiration remains valid
+		 * until it is removed from its repository.
+		 * @param expiresAt the expiration instant
+		 * @return the builder
+		 */
+		public Builder expiresAt(Instant expiresAt) {
+			Assert.notNull(expiresAt, "expiresAt must not be null");
+			this.expiresAt = expiresAt;
+			return this;
+		}
+
 		public ApiKeyEntityImpl build() {
 			Assert.hasText(id, "id must not be blank");
 			Assert.hasText(secret, "secret must not be blank");
 			Assert.hasText(name, "name must not be blank");
-			return new ApiKeyEntityImpl(id, this.passwordEncoder.encode(secret), name, this.authorities);
+			return new ApiKeyEntityImpl(id, this.passwordEncoder.encode(secret), name, this.authorities,
+					this.expiresAt);
 		}
 
 	}

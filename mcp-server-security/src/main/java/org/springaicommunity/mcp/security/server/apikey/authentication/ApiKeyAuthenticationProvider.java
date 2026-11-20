@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-2025 the original author or authors.
+ * Copyright 2025-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package org.springaicommunity.mcp.security.server.apikey.authentication;
+
+import java.time.Clock;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
@@ -38,11 +40,24 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 
 	private final ApiKeyEntityRepository<T> apiKeyEntityRepository;
 
+	private final Clock clock;
+
 	private PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 
 	public ApiKeyAuthenticationProvider(ApiKeyEntityRepository<T> apiKeyEntityRepository) {
+		this(apiKeyEntityRepository, Clock.systemUTC());
+	}
+
+	/**
+	 * Create an authentication provider using the supplied clock.
+	 * @param apiKeyEntityRepository repository used to look up API keys
+	 * @param clock clock used to evaluate API key expiration
+	 */
+	public ApiKeyAuthenticationProvider(ApiKeyEntityRepository<T> apiKeyEntityRepository, Clock clock) {
 		Assert.notNull(apiKeyEntityRepository, "apiKeyRepository cannot be null");
+		Assert.notNull(clock, "clock cannot be null");
 		this.apiKeyEntityRepository = apiKeyEntityRepository;
+		this.clock = clock;
 	}
 
 	@Override
@@ -64,6 +79,9 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 		}
 		if (!passwordEncoder.matches(apiKey.getSecret(), loggedInEntity.getSecret())) {
 			throw new BadCredentialsException("API key does not match");
+		}
+		if (loggedInEntity.getExpiresAt() != null && !this.clock.instant().isBefore(loggedInEntity.getExpiresAt())) {
+			throw new BadCredentialsException("API key has expired");
 		}
 
 		return ApiKeyAuthenticationToken.authenticated(loggedInEntity, loggedInEntity.getAuthorities());
