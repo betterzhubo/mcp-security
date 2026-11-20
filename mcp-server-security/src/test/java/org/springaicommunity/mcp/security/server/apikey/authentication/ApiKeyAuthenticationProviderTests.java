@@ -95,6 +95,32 @@ class ApiKeyAuthenticationProviderTests {
 	}
 
 	@Test
+	void rejectsDisabledApiKey() {
+		var apiKeyEntity = ApiKeyEntityImpl.builder().id("disabled").secret("test-secret").name("disabled key").build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
+		repository.disableApiKey("disabled");
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+
+		assertThatThrownBy(() -> provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("disabled.test-secret"))))
+			.isInstanceOf(BadCredentialsException.class)
+			.hasMessage("Invalid API key");
+	}
+
+	@Test
+	void rejectsRevokedApiKey() {
+		var apiKeyEntity = ApiKeyEntityImpl.builder().id("revoked").secret("test-secret").name("revoked key").build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
+		repository.revokeApiKey("revoked");
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+
+		assertThatThrownBy(() -> provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("revoked.test-secret"))))
+			.isInstanceOf(BadCredentialsException.class)
+			.hasMessage("Invalid API key");
+	}
+
+	@Test
 	void acceptsApiKeyBeforeExpirationInstant() {
 		var validKey = ApiKeyEntityImpl.builder()
 			.id("valid")

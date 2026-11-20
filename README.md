@@ -290,6 +290,21 @@ for display purposes.
 A sample implementation is available with an `InMemoryApiKeyEntityRepository` along with a default `ApiKeyEntityImpl`.
 You can bring your own entity implementation with the in-memory repository.
 
+Repositories that support API key lifecycle management can also implement
+`ApiKeyEntityLifecycleRepository`. The built-in `InMemoryApiKeyEntityRepository` supports
+the following operations:
+
+```java
+repository.disableApiKey("api01"); // Keep the key but reject authentication
+repository.enableApiKey("api01");  // Allow authentication again
+repository.revokeApiKey("api01");  // Remove the key from the repository
+```
+
+Disabled keys remain stored and can be re-enabled. Revoked keys are treated as invalid
+credentials. Existing `ApiKeyEntityRepository` implementations remain compatible; dynamic
+enable/disable/revoke operations are available only when the repository implements the lifecycle
+interface.
+
 > ⚠️ The `InMemoryApiKeyEntityRepository` uses on bcrypt for storing the API keys, and, as such, will be computationally
 > expensive. It is not suited for high-traffic production use. In that case, you must ship your own
 > `ApiKeyEntityRepository`  implementation.
