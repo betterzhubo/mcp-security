@@ -17,6 +17,7 @@ package org.springaicommunity.mcp.security.sample.server.securedtools;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -53,6 +54,7 @@ class HistoricalWeatherServiceAuthorizationTests {
 
 	private final MockRestServiceServer mockServer;
 
+	@Autowired
 	HistoricalWeatherServiceAuthorizationTests(HistoricalWeatherService weatherService,
 			MockRestServiceServer mockServer) {
 		this.weatherService = weatherService;
