@@ -25,6 +25,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.util.Assert;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -39,23 +40,33 @@ class McpServerConfiguration {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http,
-			@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUrl) throws Exception {
+			@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUrl,
+			CorsConfigurationSource corsConfigurationSource) throws Exception {
 		return http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
 			.with(mcpServerOAuth2(), (mcpAuthorization) -> {
 				mcpAuthorization.authorizationServer(issuerUrl).resourcePath("/mcp");
 			})
-			// MCP inspector
-			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+			.cors(cors -> cors.configurationSource(corsConfigurationSource))
 			.csrf(CsrfConfigurer::disable)
 			.build();
 	}
 
-	public CorsConfigurationSource corsConfigurationSource() {
+	@Bean
+	CorsConfigurationSource corsConfigurationSource(
+			@Value("${mcp.security.cors.allowed-origin-patterns:http://localhost:6274}") List<String> allowedOriginPatterns) {
+		Assert.notEmpty(allowedOriginPatterns, "At least one allowed CORS origin must be configured");
+		Assert.noNullElements(allowedOriginPatterns, "Allowed CORS origins must not contain null values");
+		Assert.isTrue(allowedOriginPatterns.stream().noneMatch(origin -> "*".equals(origin.trim())),
+				"Wildcard CORS origins are not allowed when credentials are enabled");
+		Assert.isTrue(allowedOriginPatterns.stream().allMatch(origin -> !origin.isBlank()),
+				"Allowed CORS origins must not be blank");
+
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOriginPatterns(List.of("*"));
-		configuration.setAllowedMethods(List.of("*"));
-		configuration.setAllowedHeaders(List.of("*"));
-		configuration.setExposedHeaders(List.of("*"));
+		configuration.setAllowedOriginPatterns(allowedOriginPatterns.stream().map(String::trim).toList());
+		configuration.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Accept", "Authorization", "Content-Type", "Origin",
+				"Mcp-Session-Id", "Mcp-Protocol-Version", "Last-Event-ID"));
+		configuration.setExposedHeaders(List.of("Mcp-Session-Id", "Mcp-Protocol-Version", "WWW-Authenticate"));
 		configuration.setAllowCredentials(true);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
