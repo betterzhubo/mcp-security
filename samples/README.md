@@ -161,8 +161,8 @@ implementations work with OAuth 2.0 security.
 
 ## 3. API Key Authentication
 
-This scenario demonstrates securing an MCP server with API keys instead of OAuth 2.0. This approach
-is simpler and suitable for scenarios where OAuth 2.0 is not required.
+This scenario demonstrates securing an MCP server with API keys and applying different
+authorities to different keys.
 
 ### Running the API Key Server
 
@@ -174,9 +174,36 @@ You do not need to run the authorization server for this sample.
 
 The server starts on http://localhost:8092.
 
+### API Key Permissions
+
+The sample configures two API keys with different permissions:
+
+| API key | Granted authority | Access |
+|---|---|---|
+| `api01.mycustomapikey` | `SCOPE_weather.read` | Can call `current-temperature` |
+| `api02.writeonlyapikey` | `SCOPE_weather.write` | Authenticates, but cannot call `current-temperature` |
+
+The tool uses the same Spring Security expression as the OAuth2 secured-tools sample:
+
+```java
+@PreAuthorize("hasAuthority('SCOPE_weather.read')")
+```
+
+To assign permissions to an in-memory API key, configure its authorities with
+`SimpleGrantedAuthority`:
+
+```java
+ApiKeyEntityImpl.builder()
+    .id("api01")
+    .secret("mycustomapikey")
+    .name("weather read api key")
+    .authorities(List.of(new SimpleGrantedAuthority("SCOPE_weather.read")))
+    .build();
+```
+
 ### Testing with curl
 
-The sample is preconfigured with an API key, `api01.mycustomapikey`. Use it in the `X-API-Key` header:
+Use the read key in the `X-API-Key` header:
 
 ```shell
 curl -XPOST "http://localhost:8092/mcp" \
@@ -185,6 +212,17 @@ curl -XPOST "http://localhost:8092/mcp" \
    --header "Accept: text/event-stream" \
    --header "Content-type: application/json" \
    --header "X-API-Key: api01.mycustomapikey"
+```
+
+Use the write-only key to authenticate the same way. Tool discovery remains available, but invoking
+`current-temperature` is denied because the key does not carry `SCOPE_weather.read`:
+
+```shell
+curl -XPOST "http://localhost:8092/mcp" \
+   --header "X-API-Key: api02.writeonlyapikey" \
+   --header "Content-Type: application/json" \
+   --header "Accept: application/json, text/event-stream" \
+   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"current-temperature","arguments":{"latitude":51.5,"longitude":-0.12}}}'
 ```
 
 ### Testing with the MCP Inspector
@@ -204,7 +242,6 @@ curl -XPOST "http://localhost:8092/mcp" \
 3. Click "Connect" to access the server.
 
 ---
-
 
 ## 4. Secured Tools with Method-Level Security
 
