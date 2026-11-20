@@ -164,8 +164,7 @@ class JdbcApiKeyEntityRepositoryTests {
 					new SimpleGrantedAuthority("SCOPE_read")))
 			.build();
 
-		assertThatThrownBy(() -> this.repository.rotateApiKey("old-key", replacement))
-			.isInstanceOf(RuntimeException.class);
+		assertThat(this.repository.rotateApiKey("old-key", replacement)).isFalse();
 		assertThat(this.repository.findByKeyId("new-key")).isNull();
 		assertThat(this.repository.isEnabled("old-key")).isTrue();
 	}
