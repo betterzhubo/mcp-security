@@ -209,8 +209,8 @@ curl -XPOST "http://localhost:8092/mcp" \
 ## 4. Secured Tools with Method-Level Security
 
 This scenario demonstrates securing individual tools rather than the entire MCP server. The server
-allows unauthenticated access to `initialize` and `tools/list`, but requires authentication when
-calling specific tools.
+allows unauthenticated access to `initialize` and `tools/list`, but requires the `weather.read`
+OAuth2 scope when calling the historical-weather tool.
 
 ### How It Works
 
@@ -223,7 +223,7 @@ The server configuration uses `@EnableMethodSecurity` and permits all requests a
 Individual tools are then protected using `@PreAuthorize` annotations:
 
 ```java
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAuthority('SCOPE_weather.read')")
 @McpTool(name = "temperature-history", ...)
 public ToolResponse getHistoricalWeatherData(...) { ...}
 ```
@@ -231,7 +231,15 @@ public ToolResponse getHistoricalWeatherData(...) { ...}
 This means:
 
 - Clients can discover available tools without authentication
-- Calling a protected tool without a valid token results in an error
+- The historical-weather tool requires the `weather.read` scope, mapped by Spring Security to `SCOPE_weather.read`
+- An authenticated token without this scope is rejected
+
+The sample authorization server allows the `weather.read` scope for `default-client`. Request it when obtaining a
+client-credentials token:
+
+```shell
+curl -XPOST "http://localhost:9000/oauth2/token" --data "grant_type=client_credentials&scope=weather.read" --user "default-client:default-secret"
+```
 
 ### Running the Secured Tools Server
 
