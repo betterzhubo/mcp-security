@@ -41,9 +41,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.util.Assert;
 
 /**
  * Opt-in REST API for managing MCP API keys.
@@ -162,7 +162,7 @@ public class ApiKeyManagementController {
 	}
 
 	private ApiKeyMetadataResponse getMetadataAfterLifecycleChange(String keyId) {
-		ApiKeyEntity entity = this.repository.findByKeyId(keyId);
+		@Nullable ApiKeyEntity entity = this.repository.findByKeyId(keyId);
 		if (entity == null) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
