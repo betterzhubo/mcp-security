@@ -30,8 +30,7 @@ import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityLifecycleRep
  *
  * @author Daniel Garnier-Moiroux
  */
-public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity>
-		implements ApiKeyEntityLifecycleRepository<T> {
+public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements ApiKeyEntityLifecycleRepository<T> {
 
 	private final Map<String, T> apiKeys = new ConcurrentHashMap<>();
 
