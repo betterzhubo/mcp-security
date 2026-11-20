@@ -153,7 +153,9 @@ class InMemoryApiKeyEntityRepositoryTest {
 		this.repository.addApiKey(existing);
 
 		assertThat(this.repository.rotateApiKey("api01", replacement)).isFalse();
-		assertThat(this.repository.findByKeyId("api02").getName()).isEqualTo("existing key");
+		var existingKey = this.repository.findByKeyId("api02");
+		assertThat(existingKey).isNotNull();
+		assertThat(existingKey.getName()).isEqualTo("existing key");
 	}
 
 	@Test
