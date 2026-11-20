@@ -109,6 +109,36 @@ class InMemoryApiKeyEntityRepositoryTest {
 	}
 
 	@Test
+	void disablesAndEnablesApiKey() {
+		assertThat(this.repository.isEnabled("api01")).isTrue();
+
+		assertThat(this.repository.disableApiKey("api01")).isTrue();
+		assertThat(this.repository.isEnabled("api01")).isFalse();
+		assertThat(this.repository.findByKeyId("api01")).isNotNull();
+
+		assertThat(this.repository.enableApiKey("api01")).isTrue();
+		assertThat(this.repository.isEnabled("api01")).isTrue();
+		assertThat(this.repository.disableApiKey("does-not-exist")).isFalse();
+		assertThat(this.repository.enableApiKey("does-not-exist")).isFalse();
+	}
+
+	@Test
+	void revokesApiKey() {
+		assertThat(this.repository.revokeApiKey("api01")).isTrue();
+		assertThat(this.repository.findByKeyId("api01")).isNull();
+		assertThat(this.repository.isEnabled("api01")).isFalse();
+		assertThat(this.repository.revokeApiKey("api01")).isFalse();
+	}
+
+	@Test
+	void addingApiKeyResetsDisabledState() {
+		this.repository.disableApiKey("api01");
+		this.repository.addApiKey(this.apiKeyEntity);
+
+		assertThat(this.repository.isEnabled("api01")).isTrue();
+	}
+
+	@Test
 	void removeApiKey() {
 		this.repository.removeApiKey("api01");
 		this.repository.removeApiKey("does-not-exist");
