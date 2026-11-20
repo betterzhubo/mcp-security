@@ -44,8 +44,8 @@ class ApiKeyAuthenticationProviderTests {
 		var repository = new InMemoryApiKeyEntityRepository<>(List.of(apiKeyEntity));
 		var provider = new ApiKeyAuthenticationProvider<>(repository);
 
-		var authentication = provider.authenticate(
-				ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("api01.test-secret")));
+		var authentication = provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("api01.test-secret")));
 
 		assertThat(authentication).isNotNull();
 		assertThat(authentication.isAuthenticated()).isTrue();

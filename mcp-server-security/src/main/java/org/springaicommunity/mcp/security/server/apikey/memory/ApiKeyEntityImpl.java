@@ -122,8 +122,8 @@ public class ApiKeyEntityImpl implements ApiKeyEntity {
 		}
 
 		/**
-		 * Configure the authorities granted to this API key. Authorities are copied
-		 * when configured and exposed as an immutable list.
+		 * Configure the authorities granted to this API key. Authorities are copied when
+		 * configured and exposed as an immutable list.
 		 * @param authorities the authorities granted to this API key
 		 * @return the builder
 		 */

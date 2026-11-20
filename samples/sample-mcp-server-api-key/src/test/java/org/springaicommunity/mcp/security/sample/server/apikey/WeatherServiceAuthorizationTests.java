@@ -70,8 +70,7 @@ class WeatherServiceAuthorizationTests {
 	@Test
 	@WithMockUser(authorities = "SCOPE_weather.read")
 	void allowsCallWithWeatherReadAuthority() {
-		this.mockServer.expect(ExpectedCount.once(),
-				requestTo(startsWith("https://api.open-meteo.com/v1/forecast")))
+		this.mockServer.expect(ExpectedCount.once(), requestTo(startsWith("https://api.open-meteo.com/v1/forecast")))
 			.andRespond(withSuccess(WEATHER_RESPONSE, MediaType.APPLICATION_JSON));
 
 		var result = this.weatherService.getTemperature(51.5, -0.12);
