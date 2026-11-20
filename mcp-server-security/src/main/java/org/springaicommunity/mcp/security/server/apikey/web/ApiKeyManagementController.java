@@ -103,7 +103,7 @@ public class ApiKeyManagementController {
 	@GetMapping("/{keyId}")
 	public ApiKeyMetadataResponse get(@PathVariable String keyId, @Nullable Authentication authentication) {
 		requireManagementAuthority(authentication);
-		ApiKeyEntity entity = this.repository.findByKeyId(keyId);
+		@Nullable ApiKeyEntity entity = this.repository.findByKeyId(keyId);
 		if (entity == null) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
@@ -145,7 +145,7 @@ public class ApiKeyManagementController {
 			@RequestBody(required = false) @Nullable RotateApiKeyRequest request,
 			@Nullable Authentication authentication) {
 		requireManagementAuthority(authentication);
-		ApiKeyEntity current = this.repository.findByKeyId(keyId);
+		@Nullable ApiKeyEntity current = this.repository.findByKeyId(keyId);
 		if (current == null) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
