@@ -49,7 +49,9 @@ class ApiKeyAuthenticationProviderTests {
 
 		assertThat(authentication).isNotNull();
 		assertThat(authentication.isAuthenticated()).isTrue();
-		assertThat(authentication.getAuthorities()).containsExactlyElementsOf(List.of(readAuthority));
+		assertThat(authentication.getAuthorities()).hasSize(1);
+		assertThat(authentication.getAuthorities().iterator().next().getAuthority())
+			.isEqualTo("SCOPE_weather.read");
 	}
 
 }
