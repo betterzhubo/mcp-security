@@ -38,7 +38,8 @@ public interface ApiKeyEntity extends ApiKey, CredentialsContainer {
 	}
 
 	/**
-	 * Return the instant at which this API key expires, or {@code null} if it does not expire.
+	 * Return the instant at which this API key expires, or {@code null} if it does not
+	 * expire.
 	 * @return the expiration instant, or {@code null} for a key without an expiration
 	 */
 	default @Nullable Instant getExpiresAt() {
