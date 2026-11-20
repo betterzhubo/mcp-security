@@ -122,11 +122,7 @@ class ApiKeyAuthenticationProviderTests {
 
 	@Test
 	void supportsAuthenticationDuringRotationAndAfterOldKeyRevocation() {
-		var currentKey = ApiKeyEntityImpl.builder()
-			.id("current")
-			.secret("current-secret")
-			.name("current key")
-			.build();
+		var currentKey = ApiKeyEntityImpl.builder().id("current").secret("current-secret").name("current key").build();
 		var replacementKey = ApiKeyEntityImpl.builder()
 			.id("replacement")
 			.secret("replacement-secret")
@@ -137,10 +133,10 @@ class ApiKeyAuthenticationProviderTests {
 
 		assertThat(repository.rotateApiKey("current", replacementKey)).isTrue();
 
-		var currentAuthentication = provider.authenticate(
-				ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("current.current-secret")));
-		var replacementAuthentication = provider.authenticate(
-				ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("replacement.replacement-secret")));
+		var currentAuthentication = provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("current.current-secret")));
+		var replacementAuthentication = provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("replacement.replacement-secret")));
 
 		assertThat(currentAuthentication).isNotNull();
 		assertThat(currentAuthentication.isAuthenticated()).isTrue();
@@ -153,8 +149,8 @@ class ApiKeyAuthenticationProviderTests {
 			.isInstanceOf(BadCredentialsException.class)
 			.hasMessage("Invalid API key");
 
-		var authenticationAfterRevocation = provider.authenticate(
-				ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("replacement.replacement-secret")));
+		var authenticationAfterRevocation = provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("replacement.replacement-secret")));
 		assertThat(authenticationAfterRevocation).isNotNull();
 		assertThat(authenticationAfterRevocation.isAuthenticated()).isTrue();
 	}
