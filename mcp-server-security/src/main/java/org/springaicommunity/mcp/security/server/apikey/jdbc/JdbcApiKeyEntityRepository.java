@@ -38,12 +38,11 @@ import org.springframework.util.Assert;
  * rotation. Secrets must be supplied as encoded values, as produced by the API key
  * entity's configured {@code PasswordEncoder}.
  *
- * @author OpenAI
  */
 public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepository<ApiKeyEntity> {
 
 	private static final RowMapper<KeyRow> KEY_ROW_MAPPER = (rs, rowNum) -> {
-		Timestamp expiresAt = rs.getTimestamp("expires_at");
+		@Nullable Timestamp expiresAt = rs.getTimestamp("expires_at");
 		return new KeyRow(rs.getString("key_id"), rs.getString("secret_hash"),
 				expiresAt != null ? expiresAt.toInstant() : null);
 	};
@@ -152,7 +151,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 	private void insertKey(ApiKeyEntity entity) {
 		@Nullable String secretHash = entity.getSecret();
 		Assert.hasText(secretHash, "entity secret must not be null or blank");
-		Instant expiresAt = entity.getExpiresAt();
+		@Nullable Instant expiresAt = entity.getExpiresAt();
 		this.jdbcTemplate.update(
 				"INSERT INTO mcp_api_keys (key_id, secret_hash, expires_at, enabled) VALUES (?, ?, ?, TRUE)",
 				entity.getId(), secretHash, expiresAt != null ? Timestamp.from(expiresAt) : null);
