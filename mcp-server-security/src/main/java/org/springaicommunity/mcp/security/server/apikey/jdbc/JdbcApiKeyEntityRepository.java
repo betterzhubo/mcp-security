@@ -60,9 +60,8 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 
 	@Override
 	public @Nullable ApiKeyEntity findByKeyId(String keyId) {
-		List<KeyRow> rows = this.jdbcTemplate.query(
-				"SELECT key_id, secret_hash, expires_at FROM mcp_api_keys WHERE key_id = ?",
-				KEY_ROW_MAPPER, keyId);
+		List<KeyRow> rows = this.jdbcTemplate
+			.query("SELECT key_id, secret_hash, expires_at FROM mcp_api_keys WHERE key_id = ?", KEY_ROW_MAPPER, keyId);
 		if (rows.isEmpty()) {
 			return null;
 		}
@@ -86,8 +85,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 
 	@Override
 	public boolean isEnabled(String keyId) {
-		List<Boolean> values = this.jdbcTemplate.query(
-				"SELECT enabled FROM mcp_api_keys WHERE key_id = ?",
+		List<Boolean> values = this.jdbcTemplate.query("SELECT enabled FROM mcp_api_keys WHERE key_id = ?",
 				(rs, rowNum) -> rs.getBoolean("enabled"), keyId);
 		return !values.isEmpty() && values.get(0);
 	}
@@ -137,8 +135,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 	}
 
 	private boolean isEnabledForUpdate(String keyId) {
-		List<Boolean> values = this.jdbcTemplate.query(
-				"SELECT enabled FROM mcp_api_keys WHERE key_id = ? FOR UPDATE",
+		List<Boolean> values = this.jdbcTemplate.query("SELECT enabled FROM mcp_api_keys WHERE key_id = ? FOR UPDATE",
 				(rs, rowNum) -> rs.getBoolean("enabled"), keyId);
 		return !values.isEmpty() && values.get(0);
 	}
@@ -159,8 +156,7 @@ public class JdbcApiKeyEntityRepository implements ApiKeyEntityRotationRepositor
 
 	private void insertAuthorities(ApiKeyEntity entity) {
 		for (var authority : entity.getAuthorities()) {
-			this.jdbcTemplate.update(
-					"INSERT INTO mcp_api_key_authorities (key_id, authority) VALUES (?, ?)",
+			this.jdbcTemplate.update("INSERT INTO mcp_api_key_authorities (key_id, authority) VALUES (?, ?)",
 					entity.getId(), authority.getAuthority());
 		}
 	}
