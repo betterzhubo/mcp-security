@@ -49,7 +49,7 @@ class ApiKeyAuthenticationProviderTests {
 
 		assertThat(authentication).isNotNull();
 		assertThat(authentication.isAuthenticated()).isTrue();
-		assertThat(authentication.getAuthorities()).containsExactly(readAuthority);
+		assertThat(authentication.getAuthorities()).containsExactlyElementsOf(List.of(readAuthority));
 	}
 
 }
