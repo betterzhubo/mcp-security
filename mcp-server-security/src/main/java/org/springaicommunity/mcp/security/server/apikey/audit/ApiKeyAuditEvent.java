@@ -17,6 +17,7 @@
 package org.springaicommunity.mcp.security.server.apikey.audit;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -32,8 +33,12 @@ import org.jspecify.annotations.Nullable;
  * @param outcome operation outcome
  * @param reason stable, non-sensitive reason code
  */
-public record ApiKeyAuditEvent(Instant occurredAt, Action action, @Nullable String keyId, Outcome outcome,
-		Reason reason) {
+public record ApiKeyAuditEvent(Instant occurredAt, Action action, @Nullable String keyId, List<String> authorities,
+		Outcome outcome, Reason reason) {
+
+	public ApiKeyAuditEvent {
+		authorities = List.copyOf(authorities);
+	}
 
 	public enum Action {
 		AUTHENTICATE, CREATE, READ, ENABLE, DISABLE, REVOKE, ROTATE
