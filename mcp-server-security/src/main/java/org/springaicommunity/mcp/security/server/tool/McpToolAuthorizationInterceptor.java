@@ -23,6 +23,7 @@ import io.modelcontextprotocol.server.McpAsyncServerExchange;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
 
@@ -51,7 +52,7 @@ public final class McpToolAuthorizationInterceptor {
 	 * @return secured tool specification
 	 */
 	public static McpServerFeatures.SyncToolSpecification secure(McpServerFeatures.SyncToolSpecification specification,
-			McpToolAuthorizationPolicy policy, Supplier<Authentication> authenticationResolver) {
+			McpToolAuthorizationPolicy policy, Supplier<@Nullable Authentication> authenticationResolver) {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
