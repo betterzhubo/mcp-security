@@ -18,6 +18,7 @@ package org.springaicommunity.mcp.security.server.tool;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -75,7 +76,7 @@ class McpToolAuthorizationInterceptorTests {
 			return null;
 		});
 
-		var result = secured.callHandler().apply(null, null).block();
+		var result = Objects.requireNonNull(secured.callHandler().apply(null, null).block());
 
 		assertThat(resolverCalls).isTrue();
 		assertThat(result.isError()).isTrue();
