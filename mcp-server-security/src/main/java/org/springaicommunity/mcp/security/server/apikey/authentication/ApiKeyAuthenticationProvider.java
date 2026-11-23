@@ -117,7 +117,8 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 	}
 
 	private void audit(@Nullable String keyId, ApiKeyAuditEvent.Outcome outcome, ApiKeyAuditEvent.Reason reason) {
-		this.auditLogger.logSafely(new ApiKeyAuditEvent(this.clock.instant(), ApiKeyAuditEvent.Action.AUTHENTICATE, keyId, java.util.List.of(), outcome, reason));
+		this.auditLogger.logSafely(new ApiKeyAuditEvent(this.clock.instant(), ApiKeyAuditEvent.Action.AUTHENTICATE,
+				keyId, java.util.List.of(), outcome, reason));
 	}
 
 	@Override
