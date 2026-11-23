@@ -43,7 +43,6 @@ class ApiKeyManagementControllerTests {
 				new java.security.SecureRandom(), this.auditEvents::add);
 	}
 
-
 	@Test
 	void auditsKeyCreationAndLifecycleChangesIncludingGrantedAuthorities() {
 		var created = Objects.requireNonNull(this.controller
@@ -65,8 +64,8 @@ class ApiKeyManagementControllerTests {
 			assertThat(event.toString()).doesNotContain(created.secret());
 		});
 		assertThat(this.auditEvents.get(0).authorities()).containsExactly("SCOPE_weather.read");
-		assertThat(this.auditEvents.get(4).authorities())
-			.containsExactly("SCOPE_weather.read", "SCOPE_weather.forecast");
+		assertThat(this.auditEvents.get(4).authorities()).containsExactly("SCOPE_weather.read",
+				"SCOPE_weather.forecast");
 	}
 
 	@Test
