@@ -34,9 +34,8 @@ class ApiKeyAuditLoggerTests {
 		ApiKeyAuditLogger logger = event -> {
 			throw new IllegalStateException("sensitive-value-must-not-be-logged");
 		};
-		var event = new ApiKeyAuditEvent(Instant.parse("2026-11-23T00:00:00Z"),
-				ApiKeyAuditEvent.Action.AUTHENTICATE, "key-1", List.of(), ApiKeyAuditEvent.Outcome.SUCCESS,
-				ApiKeyAuditEvent.Reason.NONE);
+		var event = new ApiKeyAuditEvent(Instant.parse("2026-11-23T00:00:00Z"), ApiKeyAuditEvent.Action.AUTHENTICATE,
+				"key-1", List.of(), ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Reason.NONE);
 
 		assertThatCode(() -> logger.logSafely(event)).doesNotThrowAnyException();
 	}
@@ -44,9 +43,8 @@ class ApiKeyAuditLoggerTests {
 	@Test
 	void auditEventCopiesGrantedAuthorities() {
 		var authorities = new java.util.ArrayList<>(List.of("SCOPE_weather.read"));
-		var event = new ApiKeyAuditEvent(Instant.parse("2026-11-23T00:00:00Z"),
-				ApiKeyAuditEvent.Action.CREATE, "key-1", authorities, ApiKeyAuditEvent.Outcome.SUCCESS,
-				ApiKeyAuditEvent.Reason.NONE);
+		var event = new ApiKeyAuditEvent(Instant.parse("2026-11-23T00:00:00Z"), ApiKeyAuditEvent.Action.CREATE, "key-1",
+				authorities, ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Reason.NONE);
 
 		authorities.add("SCOPE_weather.write");
 		assertThat(event.authorities()).containsExactly("SCOPE_weather.read");
