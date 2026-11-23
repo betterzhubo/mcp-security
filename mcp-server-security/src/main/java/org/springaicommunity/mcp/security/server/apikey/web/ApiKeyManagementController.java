@@ -25,9 +25,13 @@ import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditEvent;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditLogger;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityManagementRepository;
+import org.springaicommunity.mcp.security.server.apikey.audit.DefaultApiKeyAuditLogger;
 import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -75,65 +79,104 @@ public class ApiKeyManagementController {
 
 	private final SecureRandom secureRandom;
 
+	private ApiKeyAuditLogger auditLogger;
+
 	public ApiKeyManagementController(ApiKeyEntityManagementRepository<ApiKeyEntity> repository) {
-		this(repository, Clock.systemUTC(), new SecureRandom());
+		this(repository, Clock.systemUTC(), new SecureRandom(), new DefaultApiKeyAuditLogger());
 	}
 
 	ApiKeyManagementController(ApiKeyEntityManagementRepository<ApiKeyEntity> repository, Clock clock,
 			SecureRandom secureRandom) {
+		this(repository, clock, secureRandom, new DefaultApiKeyAuditLogger());
+	}
+
+	ApiKeyManagementController(ApiKeyEntityManagementRepository<ApiKeyEntity> repository, Clock clock,
+			SecureRandom secureRandom, ApiKeyAuditLogger auditLogger) {
 		Assert.notNull(repository, "repository must not be null");
 		Assert.notNull(clock, "clock must not be null");
 		Assert.notNull(secureRandom, "secureRandom must not be null");
+		Assert.notNull(auditLogger, "auditLogger must not be null");
 		this.repository = repository;
 		this.clock = clock;
 		this.secureRandom = secureRandom;
+		this.auditLogger = auditLogger;
+	}
+
+	/**
+	 * Configure a custom audit sink when one is available in the application context.
+	 * @param auditLogger application-provided audit sink
+	 */
+	@Autowired(required = false)
+	public void setApiKeyAuditLogger(ApiKeyAuditLogger auditLogger) {
+		Assert.notNull(auditLogger, "auditLogger must not be null");
+		this.auditLogger = auditLogger;
 	}
 
 	@PostMapping
 	public ResponseEntity<ApiKeyCreatedResponse> create(@RequestBody CreateApiKeyRequest request,
 			@Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.CREATE, null);
 		List<GrantedAuthority> authorities = validateAuthorities(request.authorities());
 		@Nullable Instant expiresAt = validateExpiration(request.expiresAt());
 		GeneratedKey generatedKey = generateKey(authorities, expiresAt);
 		this.repository.addApiKey(generatedKey.entity());
+		audit(ApiKeyAuditEvent.Action.CREATE, generatedKey.entity().getId(),
+				authorities.stream().map(GrantedAuthority::getAuthority).toList(), ApiKeyAuditEvent.Outcome.SUCCESS,
+				ApiKeyAuditEvent.Reason.NONE);
 		return ResponseEntity.status(HttpStatus.CREATED).body(generatedKey.response());
 	}
 
 	@GetMapping("/{keyId}")
 	public ApiKeyMetadataResponse get(@PathVariable String keyId, @Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.READ, keyId);
 		@Nullable ApiKeyEntity entity = this.repository.findByKeyId(keyId);
 		if (entity == null) {
+			audit(ApiKeyAuditEvent.Action.READ, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_NOT_FOUND);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
+		audit(ApiKeyAuditEvent.Action.READ, keyId,
+				entity.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList(),
+				ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Reason.NONE);
 		return metadata(entity);
 	}
 
 	@PostMapping("/{keyId}/enable")
 	public ApiKeyMetadataResponse enable(@PathVariable String keyId, @Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.ENABLE, keyId);
 		if (!this.repository.enableApiKey(keyId)) {
+			audit(ApiKeyAuditEvent.Action.ENABLE, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_NOT_FOUND);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
+		audit(ApiKeyAuditEvent.Action.ENABLE, keyId, List.of(), ApiKeyAuditEvent.Outcome.SUCCESS,
+				ApiKeyAuditEvent.Reason.NONE);
 		return getMetadataAfterLifecycleChange(keyId);
 	}
 
 	@PostMapping("/{keyId}/disable")
 	public ApiKeyMetadataResponse disable(@PathVariable String keyId, @Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.DISABLE, keyId);
 		if (!this.repository.disableApiKey(keyId)) {
+			audit(ApiKeyAuditEvent.Action.DISABLE, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_NOT_FOUND);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
+		audit(ApiKeyAuditEvent.Action.DISABLE, keyId, List.of(), ApiKeyAuditEvent.Outcome.SUCCESS,
+				ApiKeyAuditEvent.Reason.NONE);
 		return getMetadataAfterLifecycleChange(keyId);
 	}
 
 	@DeleteMapping("/{keyId}")
 	public ResponseEntity<Void> revoke(@PathVariable String keyId, @Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.REVOKE, keyId);
 		if (!this.repository.revokeApiKey(keyId)) {
+			audit(ApiKeyAuditEvent.Action.REVOKE, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_NOT_FOUND);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
+		audit(ApiKeyAuditEvent.Action.REVOKE, keyId, List.of(), ApiKeyAuditEvent.Outcome.SUCCESS,
+				ApiKeyAuditEvent.Reason.NONE);
 		return ResponseEntity.noContent().build();
 	}
 
@@ -141,12 +184,16 @@ public class ApiKeyManagementController {
 	public ResponseEntity<ApiKeyCreatedResponse> rotate(@PathVariable String keyId,
 			@RequestBody(required = false) @Nullable RotateApiKeyRequest request,
 			@Nullable Authentication authentication) {
-		requireManagementAuthority(authentication);
+		requireManagementAuthority(authentication, ApiKeyAuditEvent.Action.ROTATE, keyId);
 		@Nullable ApiKeyEntity current = this.repository.findByKeyId(keyId);
 		if (current == null) {
+			audit(ApiKeyAuditEvent.Action.ROTATE, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_NOT_FOUND);
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "API key not found");
 		}
 		if (!this.repository.isEnabled(keyId)) {
+			audit(ApiKeyAuditEvent.Action.ROTATE, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.KEY_DISABLED);
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Disabled API keys cannot be rotated");
 		}
 		List<String> requestedAuthorities = request != null && request.authorities() != null ? request.authorities()
@@ -154,8 +201,14 @@ public class ApiKeyManagementController {
 		List<GrantedAuthority> authorities = validateAuthorities(requestedAuthorities);
 		GeneratedKey replacement = generateKey(authorities, current.getExpiresAt());
 		if (!this.repository.rotateApiKey(keyId, replacement.entity())) {
+			audit(ApiKeyAuditEvent.Action.ROTATE, keyId,
+					authorities.stream().map(GrantedAuthority::getAuthority).toList(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.OPERATION_REJECTED);
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "API key rotation was rejected");
 		}
+		audit(ApiKeyAuditEvent.Action.ROTATE, replacement.entity().getId(),
+				authorities.stream().map(GrantedAuthority::getAuthority).toList(), ApiKeyAuditEvent.Outcome.SUCCESS,
+				ApiKeyAuditEvent.Reason.NONE);
 		return ResponseEntity.status(HttpStatus.CREATED).body(replacement.response());
 	}
 
@@ -218,13 +271,21 @@ public class ApiKeyManagementController {
 		return expiresAt;
 	}
 
-	private void requireManagementAuthority(@Nullable Authentication authentication) {
+	private void requireManagementAuthority(@Nullable Authentication authentication, ApiKeyAuditEvent.Action action,
+			@Nullable String keyId) {
 		if (authentication == null || !authentication.isAuthenticated()
 				|| authentication.getAuthorities()
 					.stream()
 					.noneMatch(authority -> MANAGEMENT_AUTHORITY.equals(authority.getAuthority()))) {
+			audit(action, keyId, List.of(), ApiKeyAuditEvent.Outcome.FAILURE, ApiKeyAuditEvent.Reason.ACCESS_DENIED);
 			throw new AccessDeniedException("Missing required authority: " + MANAGEMENT_AUTHORITY);
 		}
+	}
+
+	private void audit(ApiKeyAuditEvent.Action action, @Nullable String keyId, List<String> authorities,
+			ApiKeyAuditEvent.Outcome outcome, ApiKeyAuditEvent.Reason reason) {
+		this.auditLogger
+			.logSafely(new ApiKeyAuditEvent(this.clock.instant(), action, keyId, authorities, outcome, reason));
 	}
 
 	private record GeneratedKey(ApiKeyEntity entity, ApiKeyCreatedResponse response) {

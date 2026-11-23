@@ -1,11 +1,13 @@
 package org.springaicommunity.mcp.security.server.apikey.web;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditEvent;
 import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.InMemoryApiKeyEntityRepository;
 
@@ -31,10 +33,52 @@ class ApiKeyManagementControllerTests {
 
 	private ApiKeyManagementController controller;
 
+	private List<ApiKeyAuditEvent> auditEvents;
+
 	@BeforeEach
 	void setUp() {
 		this.repository = new InMemoryApiKeyEntityRepository<>();
-		this.controller = new ApiKeyManagementController(this.repository);
+		this.auditEvents = new ArrayList<>();
+		this.controller = new ApiKeyManagementController(this.repository, java.time.Clock.systemUTC(),
+				new java.security.SecureRandom(), this.auditEvents::add);
+	}
+
+	@Test
+	void auditsKeyCreationAndLifecycleChangesIncludingGrantedAuthorities() {
+		var created = Objects.requireNonNull(this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), ADMIN)
+			.getBody());
+		this.controller.get(created.keyId(), ADMIN);
+		this.controller.disable(created.keyId(), ADMIN);
+		this.controller.enable(created.keyId(), ADMIN);
+		this.controller.rotate(created.keyId(), new ApiKeyManagementController.RotateApiKeyRequest(
+				List.of("SCOPE_weather.read", "SCOPE_weather.forecast")), ADMIN);
+		this.controller.revoke(created.keyId(), ADMIN);
+
+		assertThat(this.auditEvents).extracting(ApiKeyAuditEvent::action)
+			.containsExactly(ApiKeyAuditEvent.Action.CREATE, ApiKeyAuditEvent.Action.READ,
+					ApiKeyAuditEvent.Action.DISABLE, ApiKeyAuditEvent.Action.ENABLE, ApiKeyAuditEvent.Action.ROTATE,
+					ApiKeyAuditEvent.Action.REVOKE);
+		assertThat(this.auditEvents).allSatisfy(event -> {
+			assertThat(event.outcome()).isEqualTo(ApiKeyAuditEvent.Outcome.SUCCESS);
+			assertThat(event.toString()).doesNotContain(created.secret());
+		});
+		assertThat(this.auditEvents.get(0).authorities()).containsExactly("SCOPE_weather.read");
+		assertThat(this.auditEvents.get(4).authorities()).containsExactly("SCOPE_weather.read",
+				"SCOPE_weather.forecast");
+	}
+
+	@Test
+	void auditsManagementAuthorizationFailures() {
+		assertThatThrownBy(() -> this.controller
+			.create(new ApiKeyManagementController.CreateApiKeyRequest(List.of("SCOPE_weather.read"), null), USER))
+			.isInstanceOf(AccessDeniedException.class);
+
+		assertThat(this.auditEvents).singleElement().satisfies(event -> {
+			assertThat(event.action()).isEqualTo(ApiKeyAuditEvent.Action.CREATE);
+			assertThat(event.outcome()).isEqualTo(ApiKeyAuditEvent.Outcome.FAILURE);
+			assertThat(event.reason()).isEqualTo(ApiKeyAuditEvent.Reason.ACCESS_DENIED);
+		});
 	}
 
 	@Test

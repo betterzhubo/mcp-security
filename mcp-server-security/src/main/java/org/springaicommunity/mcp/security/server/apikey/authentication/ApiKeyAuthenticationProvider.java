@@ -20,6 +20,9 @@ import java.time.Clock;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditEvent;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditLogger;
+import org.springaicommunity.mcp.security.server.apikey.audit.DefaultApiKeyAuditLogger;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityLifecycleRepository;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRepository;
 
@@ -43,10 +46,12 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 
 	private final Clock clock;
 
+	private final ApiKeyAuditLogger auditLogger;
+
 	private PasswordEncoder passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
 
 	public ApiKeyAuthenticationProvider(ApiKeyEntityRepository<T> apiKeyEntityRepository) {
-		this(apiKeyEntityRepository, Clock.systemUTC());
+		this(apiKeyEntityRepository, Clock.systemUTC(), new DefaultApiKeyAuditLogger());
 	}
 
 	/**
@@ -55,10 +60,23 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 	 * @param clock clock used to evaluate API key expiration
 	 */
 	public ApiKeyAuthenticationProvider(ApiKeyEntityRepository<T> apiKeyEntityRepository, Clock clock) {
+		this(apiKeyEntityRepository, clock, new DefaultApiKeyAuditLogger());
+	}
+
+	/**
+	 * Create an authentication provider with a configurable audit sink.
+	 * @param apiKeyEntityRepository repository used to look up API keys
+	 * @param clock clock used to evaluate API key expiration and timestamp audit events
+	 * @param auditLogger receives sanitized authentication audit events
+	 */
+	public ApiKeyAuthenticationProvider(ApiKeyEntityRepository<T> apiKeyEntityRepository, Clock clock,
+			ApiKeyAuditLogger auditLogger) {
 		Assert.notNull(apiKeyEntityRepository, "apiKeyRepository cannot be null");
 		Assert.notNull(clock, "clock cannot be null");
+		Assert.notNull(auditLogger, "auditLogger cannot be null");
 		this.apiKeyEntityRepository = apiKeyEntityRepository;
 		this.clock = clock;
+		this.auditLogger = auditLogger;
 	}
 
 	@Override
@@ -69,27 +87,38 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 
 		ApiKeyAuthenticationToken apiKeyToken = (ApiKeyAuthenticationToken) authentication;
 		var apiKey = apiKeyToken.getCredentials();
-
 		if (apiKey == null) {
-			throw new BadCredentialsException("API key is null");
+			throw reject(null, ApiKeyAuditEvent.Reason.MISSING_CREDENTIALS, "API key is null");
 		}
 
-		T loggedInEntity = this.apiKeyEntityRepository.findByKeyId(apiKey.getId());
+		String keyId = apiKey.getId();
+		T loggedInEntity = this.apiKeyEntityRepository.findByKeyId(keyId);
 		if (loggedInEntity == null) {
-			throw new BadCredentialsException("Invalid API key");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_NOT_FOUND, "Invalid API key");
 		}
 		if (this.apiKeyEntityRepository instanceof ApiKeyEntityLifecycleRepository<?> lifecycleRepository
-				&& !lifecycleRepository.isEnabled(apiKey.getId())) {
-			throw new BadCredentialsException("Invalid API key");
+				&& !lifecycleRepository.isEnabled(keyId)) {
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_DISABLED, "Invalid API key");
 		}
 		if (!passwordEncoder.matches(apiKey.getSecret(), loggedInEntity.getSecret())) {
-			throw new BadCredentialsException("API key does not match");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.SECRET_MISMATCH, "API key does not match");
 		}
 		if (loggedInEntity.getExpiresAt() != null && !this.clock.instant().isBefore(loggedInEntity.getExpiresAt())) {
-			throw new BadCredentialsException("API key has expired");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_EXPIRED, "API key has expired");
 		}
 
+		audit(keyId, ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Reason.NONE);
 		return ApiKeyAuthenticationToken.authenticated(loggedInEntity, loggedInEntity.getAuthorities());
+	}
+
+	private BadCredentialsException reject(@Nullable String keyId, ApiKeyAuditEvent.Reason reason, String message) {
+		audit(keyId, ApiKeyAuditEvent.Outcome.FAILURE, reason);
+		return new BadCredentialsException(message);
+	}
+
+	private void audit(@Nullable String keyId, ApiKeyAuditEvent.Outcome outcome, ApiKeyAuditEvent.Reason reason) {
+		this.auditLogger.logSafely(new ApiKeyAuditEvent(this.clock.instant(), ApiKeyAuditEvent.Action.AUTHENTICATE,
+				keyId, java.util.List.of(), outcome, reason));
 	}
 
 	@Override
