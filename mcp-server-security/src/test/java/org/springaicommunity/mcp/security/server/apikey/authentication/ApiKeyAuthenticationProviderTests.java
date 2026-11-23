@@ -17,12 +17,14 @@
 package org.springaicommunity.mcp.security.server.apikey.authentication;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyImpl;
+import org.springaicommunity.mcp.security.server.apikey.audit.ApiKeyAuditEvent;
 import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 import org.springaicommunity.mcp.security.server.apikey.memory.InMemoryApiKeyEntityRepository;
 
@@ -38,6 +40,38 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ApiKeyAuthenticationProviderTests {
 
 	private static final Instant NOW = Instant.parse("2026-11-20T08:00:00Z");
+
+
+	@Test
+	void auditsSuccessfulAndFailedAuthenticationWithoutCredentialMaterial() {
+		var entity = ApiKeyEntityImpl.builder()
+			.id("audited")
+			.secret("test-secret")
+			.name("audited key")
+			.build();
+		var repository = new InMemoryApiKeyEntityRepository<>(List.of(entity));
+		var events = new ArrayList<ApiKeyAuditEvent>();
+		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC), events::add);
+
+		provider.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("audited.test-secret")));
+
+		assertThatThrownBy(() -> provider
+			.authenticate(ApiKeyAuthenticationToken.unauthenticated(ApiKeyImpl.from("audited.wrong-secret"))))
+			.isInstanceOf(BadCredentialsException.class);
+
+		assertThat(events).hasSize(2);
+		assertThat(events).extracting(ApiKeyAuditEvent::action)
+			.containsOnly(ApiKeyAuditEvent.Action.AUTHENTICATE);
+		assertThat(events).extracting(ApiKeyAuditEvent::outcome)
+			.containsExactly(ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Outcome.FAILURE);
+		assertThat(events).extracting(ApiKeyAuditEvent::reason)
+			.containsExactly(ApiKeyAuditEvent.Reason.NONE, ApiKeyAuditEvent.Reason.SECRET_MISMATCH);
+		assertThat(events).allSatisfy(event -> {
+			assertThat(event.keyId()).isEqualTo("audited");
+			assertThat(event.authorities()).isEmpty();
+			assertThat(event.toString()).doesNotContain("test-secret", "wrong-secret");
+		});
+	}
 
 	@Test
 	void authenticatedApiKeyCarriesConfiguredAuthorities() {
