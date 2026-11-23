@@ -29,8 +29,8 @@ public class DefaultApiKeyAuditLogger implements ApiKeyAuditLogger {
 	@Override
 	public void log(ApiKeyAuditEvent event) {
 		Level level = event.outcome() == ApiKeyAuditEvent.Outcome.SUCCESS ? Level.INFO : Level.WARNING;
-		LOGGER.log(level, "API key audit action={0} keyId={1} outcome={2} reason={3} occurredAt={4}",
-				new Object[] { event.action(), event.keyId(), event.outcome(), event.reason(), event.occurredAt() });
+		LOGGER.log(level, "API key audit action={0} keyId={1} authorities={2} outcome={3} reason={4} occurredAt={5}",
+				new Object[] { event.action(), event.keyId(), event.authorities(), event.outcome(), event.reason(), event.occurredAt() });
 	}
 
 }
