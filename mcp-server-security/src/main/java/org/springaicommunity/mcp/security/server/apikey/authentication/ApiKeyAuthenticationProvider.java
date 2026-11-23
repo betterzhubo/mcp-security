@@ -88,32 +88,32 @@ public class ApiKeyAuthenticationProvider<T extends ApiKeyEntity> implements Aut
 		ApiKeyAuthenticationToken apiKeyToken = (ApiKeyAuthenticationToken) authentication;
 		var apiKey = apiKeyToken.getCredentials();
 		if (apiKey == null) {
-			reject(null, ApiKeyAuditEvent.Reason.MISSING_CREDENTIALS, "API key is null");
+			throw reject(null, ApiKeyAuditEvent.Reason.MISSING_CREDENTIALS, "API key is null");
 		}
 
 		String keyId = apiKey.getId();
 		T loggedInEntity = this.apiKeyEntityRepository.findByKeyId(keyId);
 		if (loggedInEntity == null) {
-			reject(keyId, ApiKeyAuditEvent.Reason.KEY_NOT_FOUND, "Invalid API key");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_NOT_FOUND, "Invalid API key");
 		}
 		if (this.apiKeyEntityRepository instanceof ApiKeyEntityLifecycleRepository<?> lifecycleRepository
 				&& !lifecycleRepository.isEnabled(keyId)) {
-			reject(keyId, ApiKeyAuditEvent.Reason.KEY_DISABLED, "Invalid API key");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_DISABLED, "Invalid API key");
 		}
 		if (!passwordEncoder.matches(apiKey.getSecret(), loggedInEntity.getSecret())) {
-			reject(keyId, ApiKeyAuditEvent.Reason.SECRET_MISMATCH, "API key does not match");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.SECRET_MISMATCH, "API key does not match");
 		}
 		if (loggedInEntity.getExpiresAt() != null && !this.clock.instant().isBefore(loggedInEntity.getExpiresAt())) {
-			reject(keyId, ApiKeyAuditEvent.Reason.KEY_EXPIRED, "API key has expired");
+			throw reject(keyId, ApiKeyAuditEvent.Reason.KEY_EXPIRED, "API key has expired");
 		}
 
 		audit(keyId, ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Reason.NONE);
 		return ApiKeyAuthenticationToken.authenticated(loggedInEntity, loggedInEntity.getAuthorities());
 	}
 
-	private void reject(@Nullable String keyId, ApiKeyAuditEvent.Reason reason, String message) {
+	private BadCredentialsException reject(@Nullable String keyId, ApiKeyAuditEvent.Reason reason, String message) {
 		audit(keyId, ApiKeyAuditEvent.Outcome.FAILURE, reason);
-		throw new BadCredentialsException(message);
+		return new BadCredentialsException(message);
 	}
 
 	private void audit(@Nullable String keyId, ApiKeyAuditEvent.Outcome outcome, ApiKeyAuditEvent.Reason reason) {
