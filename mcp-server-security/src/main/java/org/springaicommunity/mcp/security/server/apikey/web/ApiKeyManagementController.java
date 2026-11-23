@@ -202,8 +202,8 @@ public class ApiKeyManagementController {
 		GeneratedKey replacement = generateKey(authorities, current.getExpiresAt());
 		if (!this.repository.rotateApiKey(keyId, replacement.entity())) {
 			audit(ApiKeyAuditEvent.Action.ROTATE, keyId,
-					authorities.stream().map(GrantedAuthority::getAuthority).toList(),
-					ApiKeyAuditEvent.Outcome.FAILURE, ApiKeyAuditEvent.Reason.OPERATION_REJECTED);
+					authorities.stream().map(GrantedAuthority::getAuthority).toList(), ApiKeyAuditEvent.Outcome.FAILURE,
+					ApiKeyAuditEvent.Reason.OPERATION_REJECTED);
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "API key rotation was rejected");
 		}
 		audit(ApiKeyAuditEvent.Action.ROTATE, replacement.entity().getId(),
@@ -271,8 +271,8 @@ public class ApiKeyManagementController {
 		return expiresAt;
 	}
 
-	private void requireManagementAuthority(@Nullable Authentication authentication,
-			ApiKeyAuditEvent.Action action, @Nullable String keyId) {
+	private void requireManagementAuthority(@Nullable Authentication authentication, ApiKeyAuditEvent.Action action,
+			@Nullable String keyId) {
 		if (authentication == null || !authentication.isAuthenticated()
 				|| authentication.getAuthorities()
 					.stream()
@@ -284,8 +284,8 @@ public class ApiKeyManagementController {
 
 	private void audit(ApiKeyAuditEvent.Action action, @Nullable String keyId, List<String> authorities,
 			ApiKeyAuditEvent.Outcome outcome, ApiKeyAuditEvent.Reason reason) {
-		this.auditLogger.logSafely(new ApiKeyAuditEvent(this.clock.instant(), action, keyId, authorities, outcome,
-				reason));
+		this.auditLogger
+			.logSafely(new ApiKeyAuditEvent(this.clock.instant(), action, keyId, authorities, outcome, reason));
 	}
 
 	private record GeneratedKey(ApiKeyEntity entity, ApiKeyCreatedResponse response) {
