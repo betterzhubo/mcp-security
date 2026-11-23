@@ -26,7 +26,8 @@ import org.springframework.util.Assert;
 /**
  * Immutable authorization policy for MCP tools.
  *
- * <p>Tools without an explicit rule are denied by default. A rule with no required
+ * <p>
+ * Tools without an explicit rule are denied by default. A rule with no required
  * authorities permits any authenticated principal; use this only for tools that are
  * intentionally available to every authenticated caller.
  */
@@ -64,8 +65,7 @@ public final class McpToolAuthorizationPolicy {
 			.stream()
 			.map(authority -> authority.getAuthority())
 			.collect(java.util.stream.Collectors.toUnmodifiableSet());
-		return rule.match() == Match.ALL
-				? granted.containsAll(rule.requiredAuthorities())
+		return rule.match() == Match.ALL ? granted.containsAll(rule.requiredAuthorities())
 				: rule.requiredAuthorities().stream().anyMatch(granted::contains);
 	}
 
@@ -76,8 +76,9 @@ public final class McpToolAuthorizationPolicy {
 	}
 
 	/**
-	 * Required authorities and their matching semantics for one tool.
-	 * An empty authority set means authenticated-only access.
+	 * Required authorities and their matching semantics for one tool. An empty authority
+	 * set means authenticated-only access.
+	 *
 	 * @param requiredAuthorities authorities required by the rule
 	 * @param match whether all or at least one authority must be present
 	 */
