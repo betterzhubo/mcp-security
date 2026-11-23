@@ -41,14 +41,9 @@ class ApiKeyAuthenticationProviderTests {
 
 	private static final Instant NOW = Instant.parse("2026-11-20T08:00:00Z");
 
-
 	@Test
 	void auditsSuccessfulAndFailedAuthenticationWithoutCredentialMaterial() {
-		var entity = ApiKeyEntityImpl.builder()
-			.id("audited")
-			.secret("test-secret")
-			.name("audited key")
-			.build();
+		var entity = ApiKeyEntityImpl.builder().id("audited").secret("test-secret").name("audited key").build();
 		var repository = new InMemoryApiKeyEntityRepository<>(List.of(entity));
 		var events = new ArrayList<ApiKeyAuditEvent>();
 		var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.fixed(NOW, ZoneOffset.UTC), events::add);
@@ -60,8 +55,7 @@ class ApiKeyAuthenticationProviderTests {
 			.isInstanceOf(BadCredentialsException.class);
 
 		assertThat(events).hasSize(2);
-		assertThat(events).extracting(ApiKeyAuditEvent::action)
-			.containsOnly(ApiKeyAuditEvent.Action.AUTHENTICATE);
+		assertThat(events).extracting(ApiKeyAuditEvent::action).containsOnly(ApiKeyAuditEvent.Action.AUTHENTICATE);
 		assertThat(events).extracting(ApiKeyAuditEvent::outcome)
 			.containsExactly(ApiKeyAuditEvent.Outcome.SUCCESS, ApiKeyAuditEvent.Outcome.FAILURE);
 		assertThat(events).extracting(ApiKeyAuditEvent::reason)
