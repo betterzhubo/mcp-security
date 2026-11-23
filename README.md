@@ -422,6 +422,62 @@ Then you should be able to call your MCP server with a header `X-API-key: api01.
 Requests without an API key receive an HTTP 401 response when no other configured authentication mechanism
 authenticates the request. Requests containing an invalid API key also receive an HTTP 401 response.
 
+### API Key Management REST API
+
+An opt-in Spring MVC controller is available for creating and managing API keys. It is disabled unless
+the `mcp-api-key-management` Spring profile is active. The application must also expose an
+`ApiKeyEntityManagementRepository<ApiKeyEntity>` bean. Both the JDBC repository and an
+`InMemoryApiKeyEntityRepository<ApiKeyEntity>` can be used.
+
+```properties
+spring.profiles.active=mcp-api-key-management
+```
+
+For example, with JDBC persistence:
+
+```java
+@Bean
+ApiKeyEntityManagementRepository<ApiKeyEntity> apiKeyEntityManagementRepository(
+        JdbcTemplate jdbcTemplate, PlatformTransactionManager transactionManager) {
+    return new JdbcApiKeyEntityRepository(jdbcTemplate, transactionManager);
+}
+```
+
+The existing Spring Security filter chain must authenticate requests to `/api/keys/**`.
+Each controller operation additionally checks for the exact
+`SCOPE_mcp.apikeys.manage` authority. This check is performed directly by the controller and
+does not depend on `@EnableMethodSecurity`. For OAuth2 resource servers, grant the
+`mcp.apikeys.manage` scope only to trusted administrators. API keys created by this API
+cannot be granted the management authority, preventing a managed key from creating further
+management credentials.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| POST | `/api/keys` | Create a key with the supplied authorities and optional ISO-8601 `expiresAt` |
+| GET | `/api/keys/{keyId}` | Read key metadata |
+| POST | `/api/keys/{keyId}/enable` | Enable a disabled key |
+| POST | `/api/keys/{keyId}/disable` | Disable a key without deleting it |
+| DELETE | `/api/keys/{keyId}` | Revoke a key permanently |
+| POST | `/api/keys/{keyId}/rotate` | Create a replacement while retaining the old key |
+
+Create requests require a non-empty `authorities` array, for example:
+
+```json
+{
+  "authorities": ["SCOPE_weather.read"],
+  "expiresAt": "2027-12-31T23:59:59Z"
+}
+```
+
+A successful create or rotate response contains the generated key ID and plaintext secret.
+The secret is returned once only; repository reads and metadata responses expose neither
+the plaintext secret nor its encoded hash. During rotation, the replacement inherits the
+current key's authorities and expiration unless replacement authorities are explicitly
+provided. The old key remains valid until an administrator confirms migration and revokes it.
+
+The controller exposes lookup by key ID rather than listing all keys. The metadata response
+contains the key ID, enabled state, authorities, and expiration timestamp.
+
 ### Origin validation
 
 MCP servers that listen on localhost are reachable from any web page the user visits, which makes them a target for

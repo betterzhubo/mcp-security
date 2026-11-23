@@ -23,14 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
 import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntity;
-import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityRotationRepository;
+import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityManagementRepository;
 
 /**
- * In-memory {@link ApiKeyEntityRotationRepository} backed by concurrent collections.
+ * In-memory {@link ApiKeyEntityManagementRepository} backed by concurrent collections.
  *
  * @author Daniel Garnier-Moiroux
  */
-public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements ApiKeyEntityRotationRepository<T> {
+public class InMemoryApiKeyEntityRepository<T extends ApiKeyEntity> implements ApiKeyEntityManagementRepository<T> {
 
 	private final Map<String, T> apiKeys = new ConcurrentHashMap<>();
 
