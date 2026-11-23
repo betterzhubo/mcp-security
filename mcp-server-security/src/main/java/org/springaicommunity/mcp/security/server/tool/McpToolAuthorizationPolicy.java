@@ -19,6 +19,7 @@ package org.springaicommunity.mcp.security.server.tool;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
 
@@ -48,7 +49,8 @@ public final class McpToolAuthorizationPolicy {
 	 */
 	public boolean isAllowed(String toolName, Authentication authentication) {
 		Assert.hasText(toolName, "toolName must not be empty");
-		if (authentication == null || !authentication.isAuthenticated()) {
+		if (authentication == null || !authentication.isAuthenticated()
+				|| new AuthenticationTrustResolverImpl().isAnonymous(authentication)) {
 			return false;
 		}
 		Rule rule = this.rules.get(toolName);
