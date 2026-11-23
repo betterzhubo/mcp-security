@@ -48,8 +48,10 @@ class ApiKeyAuditLoggerTests {
 				ApiKeyAuditEvent.Action.CREATE, "key-1", authorities, ApiKeyAuditEvent.Outcome.SUCCESS,
 				ApiKeyAuditEvent.Reason.NONE);
 
-		assertThatThrownBy(() -> authorities.add("SCOPE_weather.write")).doesNotThrowAnyException();
+		authorities.add("SCOPE_weather.write");
 		assertThat(event.authorities()).containsExactly("SCOPE_weather.read");
+		assertThatThrownBy(() -> event.authorities().add("SCOPE_weather.write"))
+			.isInstanceOf(UnsupportedOperationException.class);
 	}
 
 }
