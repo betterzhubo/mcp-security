@@ -19,9 +19,11 @@ package org.springaicommunity.mcp.security.server.apikey.audit;
 /**
  * Receives sanitized API key audit events.
  *
- * <p>Applications may provide an implementation that forwards events to their audit
- * platform or durable event store. Implementations should not include credential material
- * in their output.</p>
+ * <p>
+ * Applications may provide an implementation that forwards events to their audit platform
+ * or durable event store. Implementations should not include credential material in their
+ * output.
+ * </p>
  */
 @FunctionalInterface
 public interface ApiKeyAuditLogger {
