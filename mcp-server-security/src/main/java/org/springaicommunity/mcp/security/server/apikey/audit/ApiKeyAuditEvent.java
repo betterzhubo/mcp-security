@@ -24,8 +24,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Sanitized audit event for API key authentication and lifecycle operations.
  *
- * <p>Events intentionally contain no API key secret, encoded secret, request body, or
- * exception message. The key identifier is included to support incident investigation.</p>
+ * <p>
+ * Events intentionally contain no API key secret, encoded secret, request body, or
+ * exception message. The key identifier is included to support incident investigation.
+ * </p>
  *
  * @param occurredAt event timestamp
  * @param action operation that produced the event
@@ -41,16 +43,22 @@ public record ApiKeyAuditEvent(Instant occurredAt, Action action, @Nullable Stri
 	}
 
 	public enum Action {
+
 		AUTHENTICATE, CREATE, READ, ENABLE, DISABLE, REVOKE, ROTATE
+
 	}
 
 	public enum Outcome {
+
 		SUCCESS, FAILURE
+
 	}
 
 	public enum Reason {
+
 		NONE, MISSING_CREDENTIALS, KEY_NOT_FOUND, KEY_DISABLED, SECRET_MISMATCH, KEY_EXPIRED, ACCESS_DENIED,
 		INVALID_REQUEST, OPERATION_REJECTED, INTERNAL_ERROR
+
 	}
 
 }
