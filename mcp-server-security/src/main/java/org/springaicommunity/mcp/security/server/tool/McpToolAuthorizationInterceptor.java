@@ -31,9 +31,10 @@ import reactor.core.publisher.Mono;
 /**
  * Decorates MCP SDK tool specifications with a centralized authorization policy.
  *
- * <p>The supplied authentication resolver is evaluated for every invocation. For
- * reactive servers, provide a resolver that reads the authentication from the
- * subscriber's security context rather than relying on a thread-local context.
+ * <p>
+ * The supplied authentication resolver is evaluated for every invocation. For reactive
+ * servers, provide a resolver that reads the authentication from the subscriber's
+ * security context rather than relying on a thread-local context.
  */
 public final class McpToolAuthorizationInterceptor {
 
@@ -49,9 +50,8 @@ public final class McpToolAuthorizationInterceptor {
 	 * @param authenticationResolver resolves the current caller
 	 * @return secured tool specification
 	 */
-	public static McpServerFeatures.SyncToolSpecification secure(
-			McpServerFeatures.SyncToolSpecification specification, McpToolAuthorizationPolicy policy,
-			Supplier<Authentication> authenticationResolver) {
+	public static McpServerFeatures.SyncToolSpecification secure(McpServerFeatures.SyncToolSpecification specification,
+			McpToolAuthorizationPolicy policy, Supplier<Authentication> authenticationResolver) {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
@@ -76,12 +76,13 @@ public final class McpToolAuthorizationInterceptor {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
-		return new McpServerFeatures.AsyncToolSpecification(specification.tool(), (exchange, request) -> Mono.defer(() -> {
-			if (!policy.isAllowed(specification.tool().name(), authenticationResolver.get())) {
-				return Mono.just(accessDeniedResult());
-			}
-			return specification.callHandler().apply(exchange, request);
-		}));
+		return new McpServerFeatures.AsyncToolSpecification(specification.tool(),
+				(exchange, request) -> Mono.defer(() -> {
+					if (!policy.isAllowed(specification.tool().name(), authenticationResolver.get())) {
+						return Mono.just(accessDeniedResult());
+					}
+					return specification.callHandler().apply(exchange, request);
+				}));
 	}
 
 	private static McpSchema.CallToolResult accessDeniedResult() {
