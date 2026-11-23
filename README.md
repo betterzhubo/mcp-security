@@ -478,6 +478,39 @@ provided. The old key remains valid until an administrator confirms migration an
 The controller exposes lookup by key ID rather than listing all keys. The metadata response
 contains the key ID, enabled state, authorities, and expiration timestamp.
 
+### MCP Tool-level Authorization
+
+The server module provides a deny-by-default policy and decorators for MCP Java SDK synchronous and
+asynchronous tool specifications. Authorization is evaluated for every tool invocation, using the
+current Spring Security `Authentication`. Rules can require all configured authorities or at least one
+of them. A tool with no explicit rule is denied; an explicitly configured empty rule permits any
+authenticated (non-anonymous) principal.
+
+For example, when registering SDK tool specifications:
+
+```java
+var policy = new McpToolAuthorizationPolicy(Map.of(
+    "temperature-history", McpToolAuthorizationPolicy.Rule.requireAll("SCOPE_weather.read"),
+    "system-health", McpToolAuthorizationPolicy.Rule.authenticated()
+));
+
+var securedTool = McpToolAuthorizationInterceptor.secure(
+    toolSpecification,
+    policy,
+    () -> SecurityContextHolder.getContext().getAuthentication()
+);
+```
+
+Register `securedTool` instead of the original tool specification. For asynchronous servers, provide
+an authentication resolver that reads from the active reactive security context; do not rely on
+`SecurityContextHolder` when execution is detached from the servlet thread.
+
+**Integration boundary:** these decorators protect the MCP SDK tool specifications to which they are
+applied. They do not automatically wrap tools discovered and registered by Spring AI's annotation-based
+MCP server auto-configuration. Applications using annotation-based registration must currently adapt
+their registration pipeline or use method-level authorization such as `@PreAuthorize`. This distinction
+is intentional: silently claiming gateway-wide enforcement would leave unwrapped tools exposed.
+
 ### API Key Audit Logging
 
 API key authentication and management operations emit sanitized audit events through `ApiKeyAuditLogger`.
