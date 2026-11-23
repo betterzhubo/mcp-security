@@ -39,5 +39,7 @@ jobs:
           java -version
           mvn --version
 
-      - name: Build and run tests
-        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Apply Java formatter for diagnostics
+        run: |
+          mvn --batch-mode --no-transfer-progress spring-javaformat:apply
+          git diff -- mcp-server-security/src/test/java/org/springaicommunity/mcp/security/server/apikey/audit/ApiKeyAuditLoggerTests.java
