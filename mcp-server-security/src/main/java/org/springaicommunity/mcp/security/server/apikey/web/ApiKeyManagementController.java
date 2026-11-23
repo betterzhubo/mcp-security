@@ -31,6 +31,7 @@ import org.springaicommunity.mcp.security.server.apikey.ApiKeyEntityManagementRe
 import org.springaicommunity.mcp.security.server.apikey.audit.DefaultApiKeyAuditLogger;
 import org.springaicommunity.mcp.security.server.apikey.memory.ApiKeyEntityImpl;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -78,7 +79,7 @@ public class ApiKeyManagementController {
 
 	private final SecureRandom secureRandom;
 
-	private final ApiKeyAuditLogger auditLogger;
+	private ApiKeyAuditLogger auditLogger;
 
 	public ApiKeyManagementController(ApiKeyEntityManagementRepository<ApiKeyEntity> repository) {
 		this(repository, Clock.systemUTC(), new SecureRandom(), new DefaultApiKeyAuditLogger());
@@ -98,6 +99,16 @@ public class ApiKeyManagementController {
 		this.repository = repository;
 		this.clock = clock;
 		this.secureRandom = secureRandom;
+		this.auditLogger = auditLogger;
+	}
+
+	/**
+	 * Configure a custom audit sink when one is available in the application context.
+	 * @param auditLogger application-provided audit sink
+	 */
+	@Autowired(required = false)
+	public void setApiKeyAuditLogger(ApiKeyAuditLogger auditLogger) {
+		Assert.notNull(auditLogger, "auditLogger must not be null");
 		this.auditLogger = auditLogger;
 	}
 
