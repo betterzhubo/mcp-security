@@ -19,6 +19,7 @@ package org.springaicommunity.mcp.security.server.tool;
 import java.util.Map;
 import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.Assert;
@@ -48,7 +49,7 @@ public final class McpToolAuthorizationPolicy {
 	 * @param authentication current authenticated principal
 	 * @return {@code true} only when an explicit rule exists and is satisfied
 	 */
-	public boolean isAllowed(String toolName, Authentication authentication) {
+	public boolean isAllowed(String toolName, @Nullable Authentication authentication) {
 		Assert.hasText(toolName, "toolName must not be empty");
 		if (authentication == null || !authentication.isAuthenticated()
 				|| new AuthenticationTrustResolverImpl().isAnonymous(authentication)) {
