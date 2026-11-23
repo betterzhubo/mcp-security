@@ -20,7 +20,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,8 @@ class McpToolAuthorizationPolicyTests {
 
 		assertThat(policy.isAllowed("unconfigured", authenticated)).isFalse();
 		assertThat(policy.isAllowed("read", null)).isFalse();
+		assertThat(policy.isAllowed("read", new AnonymousAuthenticationToken("key", "anonymousUser",
+				AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")))).isFalse();
 		assertThat(policy.isAllowed("read", UsernamePasswordAuthenticationToken.unauthenticated("user", "n/a")))
 			.isFalse();
 	}
