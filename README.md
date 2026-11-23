@@ -478,6 +478,31 @@ provided. The old key remains valid until an administrator confirms migration an
 The controller exposes lookup by key ID rather than listing all keys. The metadata response
 contains the key ID, enabled state, authorities, and expiration timestamp.
 
+### API Key Audit Logging
+
+API key authentication and management operations emit sanitized audit events through `ApiKeyAuditLogger`.
+The default `DefaultApiKeyAuditLogger` writes structured fields through the JDK logger. Applications can
+provide a custom `ApiKeyAuditLogger` implementation to forward events to a durable audit store or SIEM.
+
+Events cover authentication success and failure, key creation, metadata reads, enable/disable, revocation,
+and rotation. Each event includes a timestamp, operation, key ID when available, outcome, a stable reason
+code, and the authorities assigned by create/rotation operations. Authentication events never include
+authority lists or credential material.
+
+**Security guarantee:** audit events do not contain plaintext API key secrets, encoded secret hashes,
+request bodies, or exception messages. A failing custom audit sink is reported through the JDK logger
+and does not interrupt authentication or key management.
+
+To use a custom sink with the API key authentication provider, pass it to the constructor:
+
+```java
+var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.systemUTC(), auditLogger);
+```
+
+For the REST management controller, applications that construct the controller directly can use its
+package-level constructor overload with a custom logger; the default Spring-managed controller uses
+`DefaultApiKeyAuditLogger`.
+
 ### Origin validation
 
 MCP servers that listen on localhost are reachable from any web page the user visits, which makes them a target for
