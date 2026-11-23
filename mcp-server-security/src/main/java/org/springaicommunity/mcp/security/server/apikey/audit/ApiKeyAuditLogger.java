@@ -45,7 +45,8 @@ public interface ApiKeyAuditLogger {
 		}
 		catch (RuntimeException ex) {
 			java.util.logging.Logger.getLogger(ApiKeyAuditLogger.class.getName())
-				.log(java.util.logging.Level.SEVERE, "API key audit sink failed", ex);
+				.log(java.util.logging.Level.SEVERE, "API key audit sink failed (exception type={0})",
+						ex.getClass().getName());
 		}
 	}
 
