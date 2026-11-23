@@ -50,11 +50,10 @@ class McpToolAuthorizationInterceptorTests {
 	@Test
 	void permitsSynchronousInvocationWhenAuthorityIsGranted() {
 		var invoked = new AtomicBoolean();
-		var original = new McpServerFeatures.SyncToolSpecification(tool(),
-				(exchange, request) -> {
-					invoked.set(true);
-					return McpSchema.CallToolResult.builder().build();
-				});
+		var original = new McpServerFeatures.SyncToolSpecification(tool(), (exchange, request) -> {
+			invoked.set(true);
+			return McpSchema.CallToolResult.builder().build();
+		});
 		var secured = McpToolAuthorizationInterceptor.secure(original, policy(), this::authenticated);
 
 		secured.callHandler().apply(null, null);
