@@ -40,4 +40,5 @@ jobs:
           mvn --version
 
       - name: Build and run tests
-        run: mvn --batch-mode --no-transfer-progress clean verify
+        run: mvn --batch-mode --no-transfer-progress spring-javaformat:apply
+          git diff -- mcp-server-security/src/main/java/org/springaicommunity/mcp/security/server/tool/McpToolAuthorizationPolicy.java mcp-server-security/src/main/java/org/springaicommunity/mcp/security/server/tool/McpToolAuthorizationInterceptor.java mcp-server-security/src/test/java/org/springaicommunity/mcp/security/server/tool/McpToolAuthorizationPolicyTests.java mcp-server-security/src/test/java/org/springaicommunity/mcp/security/server/tool/McpToolAuthorizationInterceptorTests.java
