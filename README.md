@@ -499,9 +499,8 @@ To use a custom sink with the API key authentication provider, pass it to the co
 var provider = new ApiKeyAuthenticationProvider<>(repository, Clock.systemUTC(), auditLogger);
 ```
 
-For the REST management controller, applications that construct the controller directly can use its
-package-level constructor overload with a custom logger; the default Spring-managed controller uses
-`DefaultApiKeyAuditLogger`.
+For the REST management controller, expose an `ApiKeyAuditLogger` bean in the application context to
+replace the default logger. If no such bean is present, `DefaultApiKeyAuditLogger` is used.
 
 ### Origin validation
 
