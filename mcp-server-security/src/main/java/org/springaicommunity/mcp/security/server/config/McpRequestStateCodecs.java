@@ -31,12 +31,14 @@ import org.springframework.util.StringUtils;
 /**
  * Factory methods for MRTR request-state codecs integrated with Spring Security.
  *
- * <p>The returned codec binds each sealed request state to the name of the authenticated
+ * <p>
+ * The returned codec binds each sealed request state to the name of the authenticated
  * Spring Security principal. It fails closed when no authenticated, non-anonymous
  * principal is present. The codec also retains the SDK's HMAC integrity check, expiry,
  * method binding, and primitive binding.
  *
- * <p>Use this with the modern MCP server builder:
+ * <p>
+ * Use this with the modern MCP server builder:
  *
  * <pre>
  * RequestStateCodec codec = McpRequestStateCodecs.springSecurity(signingKey);
@@ -46,7 +48,8 @@ import org.springframework.util.StringUtils;
  *     .build();
  * </pre>
  *
- * <p>The principal is read from {@link SecurityContextHolder} when the SDK seals or opens
+ * <p>
+ * The principal is read from {@link SecurityContextHolder} when the SDK seals or opens
  * state. This is suitable when the MCP request is dispatched on a thread carrying the
  * Spring Security context, such as the SDK's blocking {@code HttpServletMcpTransport}.
  * Reactive or custom transports must explicitly propagate the security context to the
@@ -64,8 +67,8 @@ public final class McpRequestStateCodecs {
 	}
 
 	/**
-	 * Create an HMAC-SHA256 request-state codec bound to the current authenticated
-	 * Spring Security principal, with a ten-minute time-to-live.
+	 * Create an HMAC-SHA256 request-state codec bound to the current authenticated Spring
+	 * Security principal, with a ten-minute time-to-live.
 	 * @param key the shared HMAC signing key; must contain at least 32 bytes
 	 * @return the configured request-state codec
 	 */
@@ -74,8 +77,8 @@ public final class McpRequestStateCodecs {
 	}
 
 	/**
-	 * Create an HMAC-SHA256 request-state codec bound to the current authenticated
-	 * Spring Security principal.
+	 * Create an HMAC-SHA256 request-state codec bound to the current authenticated Spring
+	 * Security principal.
 	 * @param key the shared HMAC signing key; must contain at least 32 bytes
 	 * @param ttl the maximum age of a sealed request state; must be positive
 	 * @return the configured request-state codec
@@ -95,8 +98,7 @@ public final class McpRequestStateCodecs {
 
 	private static String authenticatedPrincipal(McpTransportContext transportContext) {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		if (authentication == null || !authentication.isAuthenticated()
-				|| TRUST_RESOLVER.isAnonymous(authentication)) {
+		if (authentication == null || !authentication.isAuthenticated() || TRUST_RESOLVER.isAnonymous(authentication)) {
 			throw new IllegalStateException("An authenticated principal is required for MRTR requestState");
 		}
 		String principal = authentication.getName();

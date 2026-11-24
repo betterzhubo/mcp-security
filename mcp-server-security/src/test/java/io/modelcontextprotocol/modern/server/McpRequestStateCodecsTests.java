@@ -39,8 +39,8 @@ class McpRequestStateCodecsTests {
 	private static final byte[] KEY = "0123456789abcdef0123456789abcdef".getBytes();
 
 	private static McpRequestContext context() {
-		return new McpRequestContext(1, "tools/call", McpSchema.LATEST_PROTOCOL_VERSION, ClientCapabilities.NONE,
-				null, null, "echo", Map.of(), McpTransportContext.EMPTY, false, false);
+		return new McpRequestContext(1, "tools/call", McpSchema.LATEST_PROTOCOL_VERSION, ClientCapabilities.NONE, null,
+				null, "echo", Map.of(), McpTransportContext.EMPTY, false, false);
 	}
 
 	@AfterEach
@@ -77,7 +77,8 @@ class McpRequestStateCodecsTests {
 	void rejectsAnonymousAuthentication() {
 		var codec = McpRequestStateCodecs.springSecurity(KEY);
 		SecurityContextHolder.getContext()
-			.setAuthentication(new AnonymousAuthenticationToken("key", "anonymousUser", List.of(() -> "ROLE_ANONYMOUS")));
+			.setAuthentication(
+					new AnonymousAuthenticationToken("key", "anonymousUser", List.of(() -> "ROLE_ANONYMOUS")));
 
 		assertThatThrownBy(() -> codec.seal(context(), "state")).isInstanceOf(IllegalStateException.class)
 			.hasMessage("An authenticated principal is required for MRTR requestState");
