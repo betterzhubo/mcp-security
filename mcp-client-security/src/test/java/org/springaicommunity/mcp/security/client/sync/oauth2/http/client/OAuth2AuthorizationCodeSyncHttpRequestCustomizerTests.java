@@ -62,6 +62,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
@@ -106,6 +107,25 @@ class OAuth2AuthorizationCodeSyncHttpRequestCustomizerTests {
 
 		customizer.customize(requestBuilder, "POST", ENDPOINT, "{}", contextWithAuthentication());
 
+		assertThat(requestBuilder.build().headers().firstValue(HttpHeaders.AUTHORIZATION))
+			.hasValue("Bearer " + TOKEN_VALUE);
+	}
+
+	@Test
+	@DisplayName("Uses a resolved principal without requiring servlet request attributes")
+	void usesResolvedPrincipalWithoutServletRequest() {
+		var registration = clientRegistration().build();
+		given(clientRegistrationRepository.findByRegistrationId(REGISTRATION_ID)).willReturn(registration);
+		given(authorizedClientManager.authorize(any(OAuth2AuthorizeRequest.class)))
+			.willReturn(authorizedClient(registration));
+
+		var customizer = new OAuth2AuthorizationCodeSyncHttpRequestCustomizer(authorizedClientManager,
+				clientRegistrationRepository, REGISTRATION_ID, context -> "batch-worker");
+		customizer.customize(requestBuilder, "POST", ENDPOINT, "{}", McpTransportContext.EMPTY);
+
+		var requestCaptor = org.mockito.ArgumentCaptor.forClass(OAuth2AuthorizeRequest.class);
+		verify(authorizedClientManager).authorize(requestCaptor.capture());
+		assertThat(requestCaptor.getValue().getPrincipal()).isEqualTo("batch-worker");
 		assertThat(requestBuilder.build().headers().firstValue(HttpHeaders.AUTHORIZATION))
 			.hasValue("Bearer " + TOKEN_VALUE);
 	}
