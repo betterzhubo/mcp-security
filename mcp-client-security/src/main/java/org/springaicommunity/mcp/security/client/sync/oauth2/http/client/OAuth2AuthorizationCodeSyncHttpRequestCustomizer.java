@@ -111,6 +111,7 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
 			ClientRegistrationRepository clientRegistrationRepository, String clientRegistrationId,
 			Function<McpTransportContext, String> principalResolver) {
+		Assert.notNull(authorizedClientManager, "authorizedClientManager must not be null");
 		Assert.notNull(principalResolver, "principalResolver must not be null");
 		this.authorizedClientManager = authorizedClientManager;
 		this.clientRegistrationRepository = clientRegistrationRepository;
