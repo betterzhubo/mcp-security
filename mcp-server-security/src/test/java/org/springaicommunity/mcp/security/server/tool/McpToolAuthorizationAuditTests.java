@@ -66,8 +66,8 @@ class McpToolAuthorizationAuditTests {
 	@Test
 	void recordsSuccessfulSynchronousInvocation() {
 		var events = new ArrayList<McpToolAuditEvent>();
-		var secured = McpToolAuthorizationInterceptor.secure(syncTool((exchange, request) -> successResult()),
-				policy, this::authenticated, events::add);
+		var secured = McpToolAuthorizationInterceptor.secure(syncTool((exchange, request) -> successResult()), policy,
+				this::authenticated, events::add);
 
 		secured.callHandler().apply(null, null);
 
@@ -86,8 +86,7 @@ class McpToolAuthorizationAuditTests {
 			throw new IllegalStateException("do-not-record-this-message");
 		}), policy, this::authenticated, events::add);
 
-		assertThatThrownBy(() -> secured.callHandler().apply(null, null))
-			.isInstanceOf(IllegalStateException.class)
+		assertThatThrownBy(() -> secured.callHandler().apply(null, null)).isInstanceOf(IllegalStateException.class)
 			.hasMessage("do-not-record-this-message");
 		assertThat(events).singleElement().satisfies(event -> {
 			assertThat(event.outcome()).isEqualTo(McpToolAuditEvent.Outcome.FAILURE);
@@ -132,8 +131,7 @@ class McpToolAuthorizationAuditTests {
 	}
 
 	private McpServerFeatures.SyncToolSpecification syncTool(
-			java.util.function.BiFunction<io.modelcontextprotocol.server.McpSyncServerExchange,
-					McpSchema.CallToolRequest, McpSchema.CallToolResult> handler) {
+			java.util.function.BiFunction<io.modelcontextprotocol.server.McpSyncServerExchange, McpSchema.CallToolRequest, McpSchema.CallToolResult> handler) {
 		return new McpServerFeatures.SyncToolSpecification(tool(), handler);
 	}
 
