@@ -16,6 +16,9 @@
 
 package org.springaicommunity.mcp.security.client.boot;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.springaicommunity.mcp.security.client.sync.oauth2.http.client.OAuth2DcrHttpClientTransportCustomizer;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -32,6 +35,20 @@ public class McpOAuth2ClientProperties {
 	public static final String CONFIG_PREFIX = "spring.ai.mcp.client.authorization";
 
 	private DynamicClientRegistration dynamicClientRegistration = new DynamicClientRegistration();
+
+	/**
+	 * Resource identifiers keyed by OAuth2 client registration ID. These values are
+	 * sent as the RFC 8707 {@code resource} parameter in token requests.
+	 */
+	private Map<String, String> resources = new LinkedHashMap<>();
+
+	public Map<String, String> getResources() {
+		return resources;
+	}
+
+	public void setResources(Map<String, String> resources) {
+		this.resources = resources;
+	}
 
 	public DynamicClientRegistration getDynamicClientRegistration() {
 		return dynamicClientRegistration;
