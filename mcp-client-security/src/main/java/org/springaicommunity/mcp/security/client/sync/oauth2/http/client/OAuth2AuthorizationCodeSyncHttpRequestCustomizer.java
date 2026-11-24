@@ -92,7 +92,6 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
 			ClientRegistrationRepository clientRegistrationRepository, String clientRegistrationId) {
 		this.authorizedClientManager = authorizedClientManager;
-		this.authorizedClientManager = authorizedClientManager;
 		this.clientRegistrationRepository = clientRegistrationRepository;
 		this.clientRegistrationId = clientRegistrationId;
 		this.principalResolver = null;
