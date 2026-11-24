@@ -30,8 +30,8 @@ public class DefaultMcpToolAuditLogger implements McpToolAuditLogger {
 	public void log(McpToolAuditEvent event) {
 		Level level = event.outcome() == McpToolAuditEvent.Outcome.SUCCESS ? Level.INFO : Level.WARNING;
 		LOGGER.log(level, "MCP tool audit tool={0} caller={1} outcome={2} reason={3} durationMillis={4} occurredAt={5}",
-				new Object[] { event.toolName(), event.caller(), event.outcome(), event.reason(), event.durationMillis(),
-					event.occurredAt() });
+				new Object[] { event.toolName(), event.caller(), event.outcome(), event.reason(),
+						event.durationMillis(), event.occurredAt() });
 	}
 
 }
