@@ -72,8 +72,8 @@ class McpOAuth2ClientConfigurations {
 	static class ClientRegistrationRepositoryConfiguration {
 
 		@Bean
-		McpClientRegistrationRepository mcpClientRegistrationRepository(OAuth2ClientProperties properties,
-				McpOAuth2ClientProperties mcpProperties) {
+		McpClientRegistrationRepository mcpClientRegistrationRepository(
+				OAuth2ClientProperties properties, McpOAuth2ClientProperties mcpProperties) {
 			var repo = new InMemoryMcpClientRegistrationRepository();
 			new OAuth2ClientPropertiesMapper(properties).asClientRegistrations()
 				.values()
