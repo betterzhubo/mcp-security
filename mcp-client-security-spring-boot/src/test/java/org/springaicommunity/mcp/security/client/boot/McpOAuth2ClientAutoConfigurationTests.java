@@ -164,6 +164,33 @@ class McpOAuth2ClientAutoConfigurationTests {
 	}
 
 	@Test
+	void clientRegistrationRepositoryLoadsConfiguredResources() {
+		this.contextRunner
+			.withPropertyValues("spring.security.oauth2.client.registration.test.client-id=test-client-id",
+					"spring.security.oauth2.client.registration.test.client-secret=test-client-secret",
+					"spring.security.oauth2.client.registration.test.authorization-grant-type=client_credentials",
+					"spring.security.oauth2.client.provider.test.token-uri=https://example.com/oauth2/token",
+					"spring.ai.mcp.client.authorization.resources.test=https://mcp.example.com/mcp")
+			.run(context -> {
+				var repo = context.getBean(McpClientRegistrationRepository.class);
+				assertThat(repo.findResourceIdByRegistrationId("test")).isEqualTo("https://mcp.example.com/mcp");
+			});
+	}
+
+	@Test
+	void clientRegistrationRepositoryLeavesUnconfiguredResourcesNull() {
+		this.contextRunner
+			.withPropertyValues("spring.security.oauth2.client.registration.test.client-id=test-client-id",
+					"spring.security.oauth2.client.registration.test.client-secret=test-client-secret",
+					"spring.security.oauth2.client.registration.test.authorization-grant-type=client_credentials",
+					"spring.security.oauth2.client.provider.test.token-uri=https://example.com/oauth2/token")
+			.run(context -> {
+				var repo = context.getBean(McpClientRegistrationRepository.class);
+				assertThat(repo.findResourceIdByRegistrationId("test")).isNull();
+			});
+	}
+
+	@Test
 	void backsOffClientRegistrationRepository() {
 		this.contextRunner.withUserConfiguration(CustomClientRegistrationRepositoryConfiguration.class).run(context -> {
 			assertThat(context).hasSingleBean(ClientRegistrationRepository.class);
