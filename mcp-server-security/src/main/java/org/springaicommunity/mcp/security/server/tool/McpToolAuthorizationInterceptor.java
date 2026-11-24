@@ -35,11 +35,13 @@ import reactor.core.publisher.Mono;
  * Decorates MCP SDK tool specifications with a centralized authorization policy and,
  * optionally, invocation auditing.
  *
- * <p>The supplied authentication resolver is evaluated for every invocation. For reactive
+ * <p>
+ * The supplied authentication resolver is evaluated for every invocation. For reactive
  * servers, provide a resolver that reads the authentication from the subscriber's security
  * context rather than relying on a thread-local context.
  *
- * <p>Auditing is opt-in through the overloads that accept a {@link McpToolAuditLogger}.
+ * <p>
+ * Auditing is opt-in through the overloads that accept a {@link McpToolAuditLogger}.
  * Only the tool name, authenticated principal name, outcome, stable reason code, timestamp,
  * and elapsed time are recorded. Tool arguments, results, credentials, and exception
  * messages are never passed to the audit logger.
