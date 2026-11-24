@@ -756,6 +756,24 @@ spring.ai.mcp.client.authorization.dynamic-client-registration.enabled=true
 spring.ai.mcp.client.authorization.dynamic-client-registration.allow-loopback-addresses=true
 ```
 
+For OAuth2 client registrations declared under `spring.security.oauth2.client.registration`, you can
+associate an MCP resource identifier with each registration ID. The configured value is sent as the RFC 8707
+`resource` parameter in refresh-token and client-credentials token requests:
+
+```properties
+spring.security.oauth2.client.registration.my-mcp.client-id=my-client
+spring.security.oauth2.client.registration.my-mcp.client-secret=my-secret
+spring.security.oauth2.client.registration.my-mcp.authorization-grant-type=client_credentials
+spring.security.oauth2.client.provider.my-mcp.token-uri=https://auth.example.com/oauth2/token
+
+spring.ai.mcp.client.authorization.resources.my-mcp=https://mcp.example.com
+```
+
+The map key (`my-mcp`) must match the OAuth2 registration ID. Registrations without a matching resource entry
+retain the existing behavior. This property is used by the auto-configured
+`McpClientRegistrationRepository`; if you provide a custom repository, associate resource identifiers in that
+repository yourself.
+
 Then, configure a `SecurityFilterChain` with the provided `McpClientOAuth2Configurer`:
 
 ```java
