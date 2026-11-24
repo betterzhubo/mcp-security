@@ -37,8 +37,8 @@ public class McpOAuth2ClientProperties {
 	private DynamicClientRegistration dynamicClientRegistration = new DynamicClientRegistration();
 
 	/**
-	 * Resource identifiers keyed by OAuth2 client registration ID. These values are
-	 * sent as the RFC 8707 {@code resource} parameter in token requests.
+	 * Resource identifiers keyed by OAuth2 client registration ID. These values are sent
+	 * as the RFC 8707 {@code resource} parameter in token requests.
 	 */
 	private Map<String, String> resources = new LinkedHashMap<>();
 
