@@ -21,7 +21,6 @@ import java.time.Duration;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.modern.server.HmacRequestStateCodec;
 import io.modelcontextprotocol.modern.server.RequestStateCodec;
-
 import org.springframework.security.authentication.AuthenticationTrustResolver;
 import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
 import org.springframework.security.core.Authentication;
