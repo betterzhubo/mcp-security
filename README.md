@@ -511,6 +511,35 @@ MCP server auto-configuration. Applications using annotation-based registration 
 their registration pipeline or use method-level authorization such as `@PreAuthorize`. This distinction
 is intentional: silently claiming gateway-wide enforcement would leave unwrapped tools exposed.
 
+### MCP Tool Invocation Audit Logging
+
+The MCP SDK tool decorators can emit sanitized invocation events through
+`McpToolAuditLogger`. The default `DefaultMcpToolAuditLogger` writes the tool name,
+authenticated principal name, outcome, stable reason code, timestamp, and elapsed time
+through the JDK logger. Applications can supply a custom logger to forward events to an
+audit platform or durable event store.
+
+Pass the logger when wrapping a synchronous or asynchronous tool specification:
+
+```java
+var securedTool = McpToolAuthorizationInterceptor.secure(
+    toolSpecification,
+    policy,
+    authenticationResolver,
+    new DefaultMcpToolAuditLogger()
+);
+```
+
+Events distinguish authorization denial, successful execution, tool error results, and
+handler exceptions. The interceptor does not record tool arguments, tool return values,
+credentials, or exception messages. A failing custom audit sink is isolated from the tool
+execution path and reported through the JDK logger.
+
+**Integration boundary:** invocation auditing applies only to tool specifications wrapped
+with the auditing overload of `McpToolAuthorizationInterceptor.secure(...)`. It does not
+automatically cover Spring AI annotation-based tool registration or SDK tools that are not
+wrapped.
+
 ### API Key Audit Logging
 
 API key authentication and management operations emit sanitized audit events through `ApiKeyAuditLogger`.
