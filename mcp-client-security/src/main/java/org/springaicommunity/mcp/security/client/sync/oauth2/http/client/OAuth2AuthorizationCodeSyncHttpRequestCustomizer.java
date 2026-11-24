@@ -99,9 +99,10 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 	}
 
 	/**
-	 * Create a customizer that resolves the OAuth2 principal from the MCP transport context.
-	 * This constructor supports background and service-to-service calls that do not have
-	 * a servlet request. Use an {@link org.springframework.security.oauth2.client.OAuth2AuthorizedClientService}-based
+	 * Create a customizer that resolves the OAuth2 principal from the MCP transport
+	 * context. This constructor supports background and service-to-service calls that do
+	 * not have a servlet request. Use an
+	 * {@link org.springframework.security.oauth2.client.OAuth2AuthorizedClientService}-based
 	 * manager such as {@code AuthorizedClientServiceOAuth2AuthorizedClientManager}.
 	 * @param authorizedClientManager the manager used to obtain authorized clients
 	 * @param clientRegistrationRepository the client registration repository
@@ -139,7 +140,8 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 				log.debug("No authentication or request context found: not requesting token");
 				return;
 			}
-			var oauth2AuthorizeRequestBuilder = OAuth2AuthorizeRequest.withClientRegistrationId(this.clientRegistrationId)
+			var oauth2AuthorizeRequestBuilder = OAuth2AuthorizeRequest
+				.withClientRegistrationId(this.clientRegistrationId)
 				.principal(authentication)
 				.attribute(HttpServletRequest.class.getName(), requestAttributes.getRequest());
 			if (requestAttributes.getResponse() != null) {
