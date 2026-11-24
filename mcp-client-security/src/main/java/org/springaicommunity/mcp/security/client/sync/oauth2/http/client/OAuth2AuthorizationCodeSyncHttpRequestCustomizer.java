@@ -88,6 +88,8 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 
 	private final Function<McpTransportContext, String> principalResolver;
 
+	private final boolean usePrincipalResolver;
+
 	private boolean failOnMissingClientRegistration = false;
 
 	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
@@ -95,7 +97,8 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 		this.authorizedClientManager = authorizedClientManager;
 		this.clientRegistrationRepository = clientRegistrationRepository;
 		this.clientRegistrationId = clientRegistrationId;
-		this.principalResolver = null;
+		this.principalResolver = context -> null;
+		this.usePrincipalResolver = false;
 	}
 
 	/**
@@ -117,14 +120,15 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 		Assert.notNull(principalResolver, "principalResolver must not be null");
 		this.clientRegistrationRepository = clientRegistrationRepository;
 		this.clientRegistrationId = clientRegistrationId;
-		this.principalResolver = principalResolver;
+		this.principalResolver = Objects.requireNonNull(principalResolver, "principalResolver must not be null");
+		this.usePrincipalResolver = true;
 	}
 
 	@Override
 	public void customize(HttpRequest.Builder builder, String method, URI endpoint, String body,
 			McpTransportContext context) {
 		OAuth2AuthorizeRequest authorizeRequest;
-		if (this.principalResolver != null) {
+		if (this.usePrincipalResolver) {
 			String principal = this.principalResolver.apply(context);
 			if (!StringUtils.hasText(principal)) {
 				log.debug("No principal resolved from MCP transport context: not requesting token");
