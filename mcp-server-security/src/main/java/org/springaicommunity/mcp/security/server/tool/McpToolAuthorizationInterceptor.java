@@ -124,7 +124,8 @@ public final class McpToolAuthorizationInterceptor {
 	public static McpServerFeatures.AsyncToolSpecification secure(
 			McpServerFeatures.AsyncToolSpecification specification, McpToolAuthorizationPolicy policy,
 			Supplier<Authentication> authenticationResolver) {
-		return secure(specification, policy, authenticationResolver, event -> { }, Clock.systemUTC());
+		return secure(specification, policy, authenticationResolver, event -> {
+		}, Clock.systemUTC());
 	}
 
 	/**
