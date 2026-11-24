@@ -18,9 +18,7 @@ package org.springaicommunity.mcp.security.server.resource;
 
 import java.util.function.Supplier;
 
-import io.modelcontextprotocol.server.McpAsyncServerExchange;
 import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jspecify.annotations.Nullable;
@@ -84,7 +82,7 @@ public final class McpResourceAuthorizationInterceptor {
 				(exchange, request) -> Mono.defer(() -> {
 					Authentication authentication = authenticationResolver.get();
 					if (!policy.isAllowed(request.uri(), authentication)) {
-						return Mono.error(accessDenied());
+						return Mono.<McpSchema.ReadResourceResult>error(accessDenied());
 					}
 					return specification.readHandler().apply(exchange, request);
 				}));
