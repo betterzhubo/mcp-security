@@ -20,8 +20,9 @@ package org.springaicommunity.mcp.security.server.tool.audit;
  * Receives sanitized audit events for MCP tool invocations.
  *
  * <p>
- * Applications can forward events to an audit platform or durable event store. Implementations
- * must not add tool arguments, tool results, credentials, or exception messages.
+ * Applications can forward events to an audit platform or durable event store.
+ * Implementations must not add tool arguments, tool results, credentials, or exception
+ * messages.
  */
 @FunctionalInterface
 public interface McpToolAuditLogger {
