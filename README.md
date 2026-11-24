@@ -511,6 +511,43 @@ MCP server auto-configuration. Applications using annotation-based registration 
 their registration pipeline or use method-level authorization such as `@PreAuthorize`. This distinction
 is intentional: silently claiming gateway-wide enforcement would leave unwrapped tools exposed.
 
+### MCP Resource-level Authorization
+
+The server module also provides deny-by-default authorization for MCP resource reads. The
+interceptor supports synchronous and asynchronous resource specifications and resource-template
+specifications. Rules are evaluated against the concrete URI in each `ReadResourceRequest`,
+including requests handled by URI templates.
+
+Rules can be keyed by an exact resource URI or a Spring URI-template pattern with simple path variables. Exact URI rules take
+precedence; if multiple templates match the same URI, access is denied rather than selecting a
+rule based on map iteration order. Unmatched resources and anonymous callers are denied. A denied
+read is returned as `RESOURCE_NOT_FOUND` so the response does not disclose whether a protected
+resource exists.
+
+```java
+var resourcePolicy = new McpResourceAuthorizationPolicy(Map.of(
+    "file:///public/readme.md", McpResourceAuthorizationPolicy.Rule.authenticated(),
+    "file:///private/{documentId}", McpResourceAuthorizationPolicy.Rule.requireAll("SCOPE_documents.read")
+));
+
+var securedResource = McpResourceAuthorizationInterceptor.secure(
+    resourceSpecification,
+    resourcePolicy,
+    () -> SecurityContextHolder.getContext().getAuthentication()
+);
+```
+
+Register the secured specification instead of the original resource specification. Apply the same
+decorator to resource-template specifications; authorization uses the concrete requested URI, not
+the template declaration. For asynchronous handlers, resolve authentication from the active reactive
+security context at subscription time.
+
+**Integration boundary:** these decorators authorize only MCP `resources/read` requests handled by
+SDK resource and resource-template specifications explicitly wrapped with
+`McpResourceAuthorizationInterceptor.secure(...)`. They do not filter `resources/list` metadata,
+authorize resource subscriptions, or automatically intercept resources registered through Spring AI
+annotation-based discovery or other unwrapped registration paths.
+
 ### MCP Tool Invocation Audit Logging
 
 The MCP SDK tool decorators can emit sanitized invocation events through
