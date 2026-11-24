@@ -55,9 +55,9 @@ class McpResourceAuthorizationPolicyTests {
 
 	@Test
 	void deniesUnknownUrisAnonymousCallersAndAmbiguousTemplates() {
-		var policy = new McpResourceAuthorizationPolicy(Map.of(
-				"mcp://docs/{documentId}", McpResourceAuthorizationPolicy.Rule.authenticated(),
-				"mcp://{category}/guide", McpResourceAuthorizationPolicy.Rule.authenticated()));
+		var policy = new McpResourceAuthorizationPolicy(
+				Map.of("mcp://docs/{documentId}", McpResourceAuthorizationPolicy.Rule.authenticated(),
+						"mcp://{category}/guide", McpResourceAuthorizationPolicy.Rule.authenticated()));
 
 		assertThat(policy.isAllowed("mcp://docs/guide", authenticated("SCOPE_read"))).isFalse();
 		assertThat(policy.isAllowed("mcp://other/resource", authenticated("SCOPE_read"))).isFalse();
@@ -66,9 +66,9 @@ class McpResourceAuthorizationPolicyTests {
 
 	@Test
 	void exactUriRuleTakesPrecedenceOverMatchingTemplate() {
-		var policy = new McpResourceAuthorizationPolicy(Map.of(
-				"mcp://docs/{documentId}", McpResourceAuthorizationPolicy.Rule.authenticated(),
-				"mcp://docs/private", McpResourceAuthorizationPolicy.Rule.requireAll("SCOPE_admin")));
+		var policy = new McpResourceAuthorizationPolicy(
+				Map.of("mcp://docs/{documentId}", McpResourceAuthorizationPolicy.Rule.authenticated(),
+						"mcp://docs/private", McpResourceAuthorizationPolicy.Rule.requireAll("SCOPE_admin")));
 
 		assertThat(policy.isAllowed("mcp://docs/private", authenticated("SCOPE_read"))).isFalse();
 		assertThat(policy.isAllowed("mcp://docs/public", authenticated("SCOPE_read"))).isTrue();
@@ -95,7 +95,8 @@ class McpResourceAuthorizationInterceptorTests {
 				Map.of("mcp://docs/readme", McpResourceAuthorizationPolicy.Rule.requireAll("SCOPE_read")));
 		var secured = McpResourceAuthorizationInterceptor.secure(original, policy, () -> null);
 
-		assertThatThrownBy(() -> secured.readHandler().apply(null, new McpSchema.ReadResourceRequest("mcp://docs/readme")))
+		assertThatThrownBy(
+				() -> secured.readHandler().apply(null, new McpSchema.ReadResourceRequest("mcp://docs/readme")))
 			.isInstanceOf(McpError.class)
 			.satisfies(error -> assertThat(((McpError) error).getJsonRpcError().code())
 				.isEqualTo(McpSchema.ErrorCodes.RESOURCE_NOT_FOUND));
@@ -124,8 +125,8 @@ class McpResourceAuthorizationInterceptorTests {
 		var invoked = new AtomicBoolean();
 		var resolverCalled = new AtomicBoolean();
 		var resource = McpSchema.Resource.builder("mcp://docs/readme", "readme").build();
-		var original = new McpServerFeatures.AsyncResourceSpecification(resource, (exchange, request) ->
-				reactor.core.publisher.Mono.fromSupplier(() -> {
+		var original = new McpServerFeatures.AsyncResourceSpecification(resource,
+				(exchange, request) -> reactor.core.publisher.Mono.fromSupplier(() -> {
 					invoked.set(true);
 					return McpSchema.ReadResourceResult.builder(List.of()).build();
 				}));
@@ -136,8 +137,8 @@ class McpResourceAuthorizationInterceptorTests {
 			return null;
 		});
 
-		assertThatThrownBy(() -> secured.readHandler().apply(null,
-				new McpSchema.ReadResourceRequest("mcp://docs/readme")).block())
+		assertThatThrownBy(
+				() -> secured.readHandler().apply(null, new McpSchema.ReadResourceRequest("mcp://docs/readme")).block())
 			.isInstanceOf(McpError.class);
 		assertThat(resolverCalled).isTrue();
 		assertThat(invoked).isFalse();
@@ -147,8 +148,8 @@ class McpResourceAuthorizationInterceptorTests {
 	void permitsAsynchronousResourceTemplateReadAtSubscriptionTime() {
 		var invoked = new AtomicBoolean();
 		var template = McpSchema.ResourceTemplate.builder("mcp://docs/{documentId}", "documents").build();
-		var original = new McpServerFeatures.AsyncResourceTemplateSpecification(template, (exchange, request) ->
-				reactor.core.publisher.Mono.fromSupplier(() -> {
+		var original = new McpServerFeatures.AsyncResourceTemplateSpecification(template,
+				(exchange, request) -> reactor.core.publisher.Mono.fromSupplier(() -> {
 					invoked.set(true);
 					return McpSchema.ReadResourceResult.builder(List.of()).build();
 				}));
