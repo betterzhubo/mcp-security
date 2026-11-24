@@ -37,12 +37,12 @@ import reactor.core.publisher.Mono;
  *
  * <p>
  * The supplied authentication resolver is evaluated for every invocation. For reactive
- * servers, provide a resolver that reads the authentication from the subscriber's security
- * context rather than relying on a thread-local context.
+ * servers, provide a resolver that reads the authentication from the subscriber's
+ * security context rather than relying on a thread-local context.
  *
  * <p>
- * Auditing is opt-in through the overloads that accept a {@link McpToolAuditLogger}.
- * Only the tool name, authenticated principal name, outcome, stable reason code, timestamp,
+ * Auditing is opt-in through the overloads that accept a {@link McpToolAuditLogger}. Only
+ * the tool name, authenticated principal name, outcome, stable reason code, timestamp,
  * and elapsed time are recorded. Tool arguments, results, credentials, and exception
  * messages are never passed to the audit logger.
  */
@@ -62,7 +62,8 @@ public final class McpToolAuthorizationInterceptor {
 	 */
 	public static McpServerFeatures.SyncToolSpecification secure(McpServerFeatures.SyncToolSpecification specification,
 			McpToolAuthorizationPolicy policy, Supplier<@Nullable Authentication> authenticationResolver) {
-		return secure(specification, policy, authenticationResolver, event -> { }, Clock.systemUTC());
+		return secure(specification, policy, authenticationResolver, event -> {
+		}, Clock.systemUTC());
 	}
 
 	/**
@@ -140,39 +141,45 @@ public final class McpToolAuthorizationInterceptor {
 		return secure(specification, policy, authenticationResolver, auditLogger, Clock.systemUTC());
 	}
 
-	static McpServerFeatures.AsyncToolSpecification secure(
-			McpServerFeatures.AsyncToolSpecification specification, McpToolAuthorizationPolicy policy,
-			Supplier<Authentication> authenticationResolver, McpToolAuditLogger auditLogger, Clock clock) {
+	static McpServerFeatures.AsyncToolSpecification secure(McpServerFeatures.AsyncToolSpecification specification,
+			McpToolAuthorizationPolicy policy, Supplier<Authentication> authenticationResolver,
+			McpToolAuditLogger auditLogger, Clock clock) {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
 		Assert.notNull(auditLogger, "auditLogger must not be null");
 		Assert.notNull(clock, "clock must not be null");
-		return new McpServerFeatures.AsyncToolSpecification(specification.tool(), (exchange, request) -> Mono.defer(() -> {
-			long startedAt = System.nanoTime();
-			Authentication authentication = authenticationResolver.get();
-			String toolName = specification.tool().name();
-			if (!policy.isAllowed(toolName, authentication)) {
-				log(auditLogger, clock, toolName, authentication, McpToolAuditEvent.Outcome.DENIED,
-						McpToolAuditEvent.Reason.AUTHORIZATION_DENIED, startedAt);
-				return Mono.just(accessDeniedResult());
-			}
-			return specification.callHandler().apply(exchange, request)
-				.doOnNext(result -> log(auditLogger, clock, toolName, authentication,
-						result.isError() ? McpToolAuditEvent.Outcome.FAILURE : McpToolAuditEvent.Outcome.SUCCESS,
-						result.isError() ? McpToolAuditEvent.Reason.TOOL_ERROR_RESULT : McpToolAuditEvent.Reason.NONE,
-						startedAt))
-				.doOnError(error -> log(auditLogger, clock, toolName, authentication,
-						McpToolAuditEvent.Outcome.FAILURE, McpToolAuditEvent.Reason.HANDLER_EXCEPTION, startedAt));
-		}));
+		return new McpServerFeatures.AsyncToolSpecification(specification.tool(),
+				(exchange, request) -> Mono.defer(() -> {
+					long startedAt = System.nanoTime();
+					Authentication authentication = authenticationResolver.get();
+					String toolName = specification.tool().name();
+					if (!policy.isAllowed(toolName, authentication)) {
+						log(auditLogger, clock, toolName, authentication, McpToolAuditEvent.Outcome.DENIED,
+								McpToolAuditEvent.Reason.AUTHORIZATION_DENIED, startedAt);
+						return Mono.just(accessDeniedResult());
+					}
+					return specification.callHandler()
+						.apply(exchange, request)
+						.doOnNext(result -> log(auditLogger, clock, toolName, authentication,
+								result.isError() ? McpToolAuditEvent.Outcome.FAILURE
+										: McpToolAuditEvent.Outcome.SUCCESS,
+								result.isError() ? McpToolAuditEvent.Reason.TOOL_ERROR_RESULT
+										: McpToolAuditEvent.Reason.NONE,
+								startedAt))
+						.doOnError(error -> log(auditLogger, clock, toolName, authentication,
+								McpToolAuditEvent.Outcome.FAILURE, McpToolAuditEvent.Reason.HANDLER_EXCEPTION,
+								startedAt));
+				}));
 	}
 
 	private static void log(McpToolAuditLogger auditLogger, Clock clock, String toolName,
-			@Nullable Authentication authentication, McpToolAuditEvent.Outcome outcome,
-			McpToolAuditEvent.Reason reason, long startedAt) {
+			@Nullable Authentication authentication, McpToolAuditEvent.Outcome outcome, McpToolAuditEvent.Reason reason,
+			long startedAt) {
 		String caller = authentication == null ? null : authentication.getName();
 		long durationMillis = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
-		auditLogger.logSafely(new McpToolAuditEvent(clock.instant(), toolName, caller, outcome, reason, durationMillis));
+		auditLogger
+			.logSafely(new McpToolAuditEvent(clock.instant(), toolName, caller, outcome, reason, durationMillis));
 	}
 
 	private static McpSchema.CallToolResult accessDeniedResult() {
