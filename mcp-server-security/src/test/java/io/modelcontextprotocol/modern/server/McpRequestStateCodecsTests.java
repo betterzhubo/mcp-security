@@ -26,7 +26,6 @@ import io.modelcontextprotocol.modern.McpSchema.ClientCapabilities;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springaicommunity.mcp.security.server.config.McpRequestStateCodecs;
-
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
