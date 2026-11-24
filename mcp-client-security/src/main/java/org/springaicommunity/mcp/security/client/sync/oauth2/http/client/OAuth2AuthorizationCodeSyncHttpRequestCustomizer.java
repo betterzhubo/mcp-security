@@ -20,6 +20,8 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.function.Function;
+import java.util.Objects;
 
 import io.modelcontextprotocol.client.transport.customizer.McpSyncHttpClientRequestCustomizer;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -41,6 +43,8 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * An {@link McpSyncHttpClientRequestCustomizer} that adds an OAuth2 access token to
@@ -82,6 +86,10 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 
 	private final ClientRegistrationRepository clientRegistrationRepository;
 
+	private final Function<McpTransportContext, String> principalResolver;
+
+	private final boolean usePrincipalResolver;
+
 	private boolean failOnMissingClientRegistration = false;
 
 	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
@@ -89,26 +97,64 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 		this.authorizedClientManager = authorizedClientManager;
 		this.clientRegistrationRepository = clientRegistrationRepository;
 		this.clientRegistrationId = clientRegistrationId;
+		this.principalResolver = context -> null;
+		this.usePrincipalResolver = false;
+	}
+
+	/**
+	 * Create a customizer that resolves the OAuth2 principal from the MCP transport
+	 * context. This constructor supports background and service-to-service calls that do
+	 * not have a servlet request. Use an
+	 * {@link org.springframework.security.oauth2.client.OAuth2AuthorizedClientService}-based
+	 * manager such as {@code AuthorizedClientServiceOAuth2AuthorizedClientManager}.
+	 * @param authorizedClientManager the manager used to obtain authorized clients
+	 * @param clientRegistrationRepository the client registration repository
+	 * @param clientRegistrationId the registration identifier
+	 * @param principalResolver resolves the principal name for each MCP request
+	 */
+	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
+			ClientRegistrationRepository clientRegistrationRepository, String clientRegistrationId,
+			Function<McpTransportContext, String> principalResolver) {
+		this.authorizedClientManager = Objects.requireNonNull(authorizedClientManager,
+				"authorizedClientManager must not be null");
+		Assert.notNull(principalResolver, "principalResolver must not be null");
+		this.clientRegistrationRepository = clientRegistrationRepository;
+		this.clientRegistrationId = clientRegistrationId;
+		this.principalResolver = Objects.requireNonNull(principalResolver, "principalResolver must not be null");
+		this.usePrincipalResolver = true;
 	}
 
 	@Override
 	public void customize(HttpRequest.Builder builder, String method, URI endpoint, String body,
 			McpTransportContext context) {
-		var authentication = AuthenticationMcpTransportContextProvider.getAuthentication(context);
-		var requestAttributes = AuthenticationMcpTransportContextProvider.getRequestAttributes(context);
-		if (authentication == null || requestAttributes == null) {
-			log.debug("No authentication or request context found: not requesting token");
-			return;
+		OAuth2AuthorizeRequest authorizeRequest;
+		if (this.usePrincipalResolver) {
+			String principal = this.principalResolver.apply(context);
+			if (!StringUtils.hasText(principal)) {
+				log.debug("No principal resolved from MCP transport context: not requesting token");
+				return;
+			}
+			authorizeRequest = OAuth2AuthorizeRequest.withClientRegistrationId(this.clientRegistrationId)
+				.principal(principal)
+				.build();
 		}
-
-		var oauth2AuthorizeRequestBuilder = OAuth2AuthorizeRequest.withClientRegistrationId(this.clientRegistrationId)
-			.principal(authentication)
-			.attribute(HttpServletRequest.class.getName(), requestAttributes.getRequest());
-		if (requestAttributes.getResponse() != null) {
-			oauth2AuthorizeRequestBuilder.attribute(HttpServletResponse.class.getName(),
-					requestAttributes.getResponse());
+		else {
+			var authentication = AuthenticationMcpTransportContextProvider.getAuthentication(context);
+			var requestAttributes = AuthenticationMcpTransportContextProvider.getRequestAttributes(context);
+			if (authentication == null || requestAttributes == null) {
+				log.debug("No authentication or request context found: not requesting token");
+				return;
+			}
+			var oauth2AuthorizeRequestBuilder = OAuth2AuthorizeRequest
+				.withClientRegistrationId(this.clientRegistrationId)
+				.principal(authentication)
+				.attribute(HttpServletRequest.class.getName(), requestAttributes.getRequest());
+			if (requestAttributes.getResponse() != null) {
+				oauth2AuthorizeRequestBuilder.attribute(HttpServletResponse.class.getName(),
+						requestAttributes.getResponse());
+			}
+			authorizeRequest = oauth2AuthorizeRequestBuilder.build();
 		}
-		OAuth2AuthorizeRequest authorizeRequest = oauth2AuthorizeRequestBuilder.build();
 
 		log.debug("Requesting access token for client [{}]", this.clientRegistrationId);
 
