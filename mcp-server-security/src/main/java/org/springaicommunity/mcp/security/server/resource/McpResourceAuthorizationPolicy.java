@@ -50,13 +50,13 @@ public final class McpResourceAuthorizationPolicy {
 		Assert.isTrue(rules.keySet().stream().allMatch(StringUtils::hasText),
 				"resource URI patterns must not be blank");
 		this.rules = Map.copyOf(rules);
-		this.uriTemplates = new ArrayList<>();
+		List<UriRule> templates = new ArrayList<>();
 		rules.forEach((pattern, rule) -> {
 			if (pattern.contains("{")) {
-				this.uriTemplates.add(new UriRule(new UriTemplate(pattern), rule));
+				templates.add(new UriRule(new UriTemplate(pattern), rule));
 			}
 		});
-		this.uriTemplates = List.copyOf(this.uriTemplates);
+		this.uriTemplates = List.copyOf(templates);
 	}
 
 	/**
