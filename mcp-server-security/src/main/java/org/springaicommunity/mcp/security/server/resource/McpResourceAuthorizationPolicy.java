@@ -102,8 +102,7 @@ public final class McpResourceAuthorizationPolicy {
 			Assert.noNullElements(requiredAuthorities, "requiredAuthorities must not contain null");
 			Assert.notNull(match, "match must not be null");
 			requiredAuthorities = Set.copyOf(requiredAuthorities);
-			Assert.isTrue(requiredAuthorities.stream().allMatch(StringUtils::hasText),
-					"authorities must not be blank");
+			Assert.isTrue(requiredAuthorities.stream().allMatch(StringUtils::hasText), "authorities must not be blank");
 		}
 
 		private boolean isSatisfiedBy(Authentication authentication) {
