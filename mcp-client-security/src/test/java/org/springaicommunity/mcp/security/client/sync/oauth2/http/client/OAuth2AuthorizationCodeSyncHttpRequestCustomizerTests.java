@@ -125,7 +125,7 @@ class OAuth2AuthorizationCodeSyncHttpRequestCustomizerTests {
 
 		var requestCaptor = org.mockito.ArgumentCaptor.forClass(OAuth2AuthorizeRequest.class);
 		verify(authorizedClientManager).authorize(requestCaptor.capture());
-		assertThat(requestCaptor.getValue().getPrincipal()).isEqualTo("batch-worker");
+		assertThat(requestCaptor.getValue().getPrincipal().getName()).isEqualTo("batch-worker");
 		assertThat(requestBuilder.build().headers().firstValue(HttpHeaders.AUTHORIZATION))
 			.hasValue("Bearer " + TOKEN_VALUE);
 	}
