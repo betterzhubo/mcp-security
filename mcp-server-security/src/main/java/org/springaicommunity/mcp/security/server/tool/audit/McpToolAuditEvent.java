@@ -23,7 +23,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Sanitized audit event for an MCP tool invocation.
  *
- * <p>Events deliberately exclude tool arguments, tool results, credentials, and exception
+ * <p>
+ * Events deliberately exclude tool arguments, tool results, credentials, and exception
  * messages. Caller identifies the authenticated principal when available.
  *
  * @param occurredAt event timestamp
