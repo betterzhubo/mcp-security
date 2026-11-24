@@ -782,6 +782,10 @@ This is all you need. The auto-configuration module sets up the following beans:
   identifier
 - `McpOAuth2ClientManager`: manages Dynamic Client Registration (DCR) and scope step-up
 - `UrlValidator`, `McpMetadataDiscoveryService` and `DynamicClientRegistrationService`: infrastructure for DCR
+- `OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest>` and
+  `OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest>`: add the MCP server's `resource=` parameter to
+  refresh token and client credentials token requests.
+  See [Refresh tokens and client credentials](#refresh-tokens-and-client-credentials).
 - Various `McpClientConfigurer` to update MCP transports and MCP clients so a token is added on every request
 
 For a complete working example, see the
@@ -944,6 +948,164 @@ class SecurityConfiguration {
 
 }
 ```
+
+### Refresh tokens and client credentials
+
+The MCP spec requires clients to send the
+[RFC 8707](https://www.rfc-editor.org/rfc/rfc8707) `resource=` parameter in every token request, including refresh
+token and client credentials requests. `McpClientOAuth2Configurer` only covers the authorization request and the
+authorization code token request. Spring Security performs the `refresh_token` and `client_credentials` grants in the
+`OAuth2AuthorizedClientManager`, which is a bean, outside of `HttpSecurity`.
+
+With `mcp-client-security-spring-boot`, the auto-configuration provides
+`OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest>` and
+`OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest>` beans that add the `resource=` parameter, and
+the `OAuth2AuthorizedClientManager` that Spring Security creates picks them up. There is nothing to do, unless you use
+the machine-to-machine customizers (see
+[Client credentials with `AuthorizedClientServiceOAuth2AuthorizedClientManager`](#client-credentials-with-authorizedclientserviceoauth2authorizedclientmanager))
+or pre-registered clients from `application.properties` (see
+[Pre-registered clients](#pre-registered-clients)). Each bean backs off if you provide your own, or if you define the
+matching `RefreshTokenOAuth2AuthorizedClientProvider` or `ClientCredentialsOAuth2AuthorizedClientProvider` bean. In
+that case, configure the response client on your provider with `McpResourceParametersConverter`, as shown below.
+
+Without Spring Boot, define the beans yourself:
+
+```java
+@Bean
+OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest> refreshTokenResponseClient(
+        McpClientRegistrationRepository repository) {
+    var client = new RestClientRefreshTokenTokenResponseClient();
+    client.addParametersConverter(new McpResourceParametersConverter<>(repository));
+    return client;
+}
+
+@Bean
+OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> clientCredentialsTokenResponseClient(
+        McpClientRegistrationRepository repository) {
+    var client = new RestClientClientCredentialsTokenResponseClient();
+    client.addParametersConverter(new McpResourceParametersConverter<>(repository));
+    return client;
+}
+```
+
+⚠️ Spring Security ignores the beans above if you define your own `OAuth2AuthorizedClientManager` bean, or a single
+`OAuth2AuthorizedClientProvider` bean built with `OAuth2AuthorizedClientProviderBuilder`. Configure the response
+clients on your provider directly:
+
+```java
+@Bean
+OAuth2AuthorizedClientManager authorizedClientManager(McpClientRegistrationRepository repository,
+        OAuth2AuthorizedClientRepository authorizedClientRepository) {
+    var refreshTokenClient = new RestClientRefreshTokenTokenResponseClient();
+    refreshTokenClient.addParametersConverter(new McpResourceParametersConverter<>(repository));
+    var clientCredentialsClient = new RestClientClientCredentialsTokenResponseClient();
+    clientCredentialsClient.addParametersConverter(new McpResourceParametersConverter<>(repository));
+    var manager = new DefaultOAuth2AuthorizedClientManager(repository, authorizedClientRepository);
+    manager.setAuthorizedClientProvider(OAuth2AuthorizedClientProviderBuilder.builder()
+            .authorizationCode()
+            .refreshToken(refreshToken -> refreshToken.accessTokenResponseClient(refreshTokenClient))
+            .clientCredentials(clientCredentials -> clientCredentials.accessTokenResponseClient(clientCredentialsClient))
+            .build());
+    // ... further configuration ...
+    return manager;
+}
+```
+
+#### Client credentials with `AuthorizedClientServiceOAuth2AuthorizedClientManager`
+
+`OAuth2ClientCredentialsSyncHttpRequestCustomizer`, `OAuth2HybridSyncHttpRequestCustomizer` and
+`McpOAuth2HybridExchangeFilterFunction` obtain `client_credentials` tokens through an
+`AuthorizedClientServiceOAuth2AuthorizedClientManager` that you create yourself, even with Spring Boot. Its default
+provider does not use the `OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest>` bean, so token
+requests do not carry `resource=` unless you configure the provider:
+
+```java
+@Bean
+OAuth2ClientCredentialsSyncHttpRequestCustomizer requestCustomizer(
+        McpClientRegistrationRepository repository,
+        OAuth2AuthorizedClientService authorizedClientService,
+        OAuth2AccessTokenResponseClient<OAuth2ClientCredentialsGrantRequest> clientCredentialsTokenResponseClient) {
+    var manager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(repository, authorizedClientService);
+    manager.setAuthorizedClientProvider(OAuth2AuthorizedClientProviderBuilder.builder()
+            .clientCredentials(clientCredentials -> clientCredentials
+                    .accessTokenResponseClient(clientCredentialsTokenResponseClient))
+            .build());
+    return new OAuth2ClientCredentialsSyncHttpRequestCustomizer(manager, "my-mcp-server");
+}
+```
+
+The `clientCredentialsTokenResponseClient` is the auto-configured bean with Spring Boot, or the one you defined above
+without it. Do not expose the `AuthorizedClientServiceOAuth2AuthorizedClientManager` as a bean: any
+`OAuth2AuthorizedClientManager` bean stops Spring Security from creating its default manager, which then loses the
+refresh token configuration.
+
+#### Pre-registered clients
+
+⚠️ With `mcp-client-security-spring-boot`, the auto-configured `McpClientRegistrationRepository` stores the clients
+declared under `spring.security.oauth2.client.registration` without an MCP resource identifier. These clients do not
+send a `resource=` parameter in authorization requests, nor in token requests for any grant: authorization code,
+refresh token or client credentials. Clients obtained through Dynamic Client Registration, Client ID Metadata
+Documents or `registerMcpOAuth2Client` are not affected.
+
+To send `resource=` for a pre-registered client, define your own `McpClientRegistrationRepository` bean and associate
+each registration with the MCP server's resource identifier, usually its URL:
+
+```java
+@Bean
+McpClientRegistrationRepository mcpClientRegistrationRepository(OAuth2ClientProperties properties) {
+    var repo = new InMemoryMcpClientRegistrationRepository();
+    new OAuth2ClientPropertiesMapper(properties).asClientRegistrations()
+            .values()
+            .forEach(registration -> repo.save(registration, "http://localhost:8090/mcp"));
+    return repo;
+}
+```
+
+Declare the bean method's return type as `McpClientRegistrationRepository`, not `ClientRegistrationRepository`: the
+auto-configuration only registers the refresh token and client credentials response clients when it finds a bean of
+that type.
+
+### Authorization response `iss` validation
+
+`McpClientOAuth2Configurer` validates the [RFC 9207](https://www.rfc-editor.org/rfc/rfc9207) `iss` parameter of
+authorization responses, before the authorization code is sent to the token endpoint. This protects against mix-up
+attacks, where an authorization response comes from another authorization server than the one the request was sent to.
+
+The expected issuer comes from the client registration: its issuer URI, and whether the authorization server metadata
+advertises `authorization_response_iss_parameter_supported`.
+
+| Client registration                                    | `iss` in the response | Result                        |
+|--------------------------------------------------------|-----------------------|-------------------------------|
+| Has an issuer                                          | equal to the issuer   | accepted                      |
+| Has an issuer                                          | different             | rejected                      |
+| Has an issuer, the AS advertises `iss` support         | absent                | rejected                      |
+| Has an issuer, the AS does not advertise `iss` support | absent                | accepted                      |
+| Has no issuer                                          | present               | rejected                      |
+| Has no issuer                                          | absent                | accepted, `iss` not validated |
+
+Values are compared as strings, without URL normalization: `http://localhost:8080/` does not match
+`http://localhost:8080`. Rejected responses redirect to the redirect URI with `error=invalid_iss_parameter` and a
+generic `error_description`. The reason is logged at `DEBUG` level by
+`org.springaicommunity.mcp.security.client.sync.oauth2.IssuerValidatingAuthorizationCodeAuthenticationProvider`.
+
+Dynamically registered clients and CIMD clients are built from the authorization server metadata, and have an issuer.
+With Spring Boot properties, set `issuer-uri` on the provider: Spring Boot then discovers the metadata.
+
+```properties
+spring.security.oauth2.client.provider.my-auth-server.issuer-uri=https://auth.example.com
+```
+
+⚠️ Providers that set the endpoints by hand (`authorization-uri`, `token-uri`, ...) without `issuer-uri` have no
+issuer, so authorization responses that include `iss` are rejected. If you build a `ClientRegistration` in code
+without metadata, set its `issuerUri(...)`.
+
+If you can't configure the issuer, turn off `iss` validation. This removes the mix-up attack protection:
+
+```java
+http.with(McpClientOAuth2Configurer.mcpClientOAuth2(), mcp -> mcp.issParameterValidation(false));
+```
+
+Only the `query` response mode is supported: the `iss` parameter is read from the query string of the redirect URI.
 
 ### Use with `spring-ai-starter-mcp-client` (HttpClient-based)
 

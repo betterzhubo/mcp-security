@@ -18,11 +18,13 @@ package org.springaicommunity.mcp.security.client.sync.config;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.mcp.security.client.sync.oauth2.IssuerValidatingAuthorizationCodeAuthenticationProvider;
+import org.springaicommunity.mcp.security.client.sync.oauth2.McpResourceAuthorizationRequestCustomizer;
+import org.springaicommunity.mcp.security.client.sync.oauth2.McpResourceParametersConverter;
 import org.springaicommunity.mcp.security.client.sync.oauth2.metadata.McpMetadataDiscoveryService;
 import org.springaicommunity.mcp.security.client.sync.oauth2.registration.DefaultMcpOAuth2DcrClientManager;
 import org.springaicommunity.mcp.security.client.sync.oauth2.registration.DynamicClientRegistrationRequest;
@@ -38,28 +40,30 @@ import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.client.OAuth2ClientConfigurer;
-import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
-import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.web.access.ExceptionTranslationFilter;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 
 /**
  * Configurer for OAuth2 support for MCP clients.
+ * <p>
+ * Adds the RFC 8707 {@code resource} parameter to authorization requests and
+ * authorization code token requests. Refresh token requests are made by the
+ * {@link org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager} bean,
+ * which this configurer does not control: provide an
+ * {@code OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest>} bean with a
+ * {@link McpResourceParametersConverter}, or use {@code mcp-client-security-spring-boot},
+ * which provides one.
  *
  * @author Daniel Garnier-Moiroux
  */
@@ -79,6 +83,8 @@ public class McpClientOAuth2Configurer extends AbstractHttpConfigurer<McpClientO
 
 	private boolean cimdEnabled = true;
 
+	private boolean issParameterValidation = true;
+
 	public McpClientOAuth2Configurer() {
 		this.canListenForWebServerInitialized = ClassUtils.isPresent(
 				"org.springframework.boot.web.server.servlet.context.ServletWebServerInitializedEvent",
@@ -92,18 +98,22 @@ public class McpClientOAuth2Configurer extends AbstractHttpConfigurer<McpClientO
 		registerMcpClients(http, clientRegistrationRepository, clientManager);
 
 		http.oauth2Client(oauth2Client -> {
+			if (this.issParameterValidation) {
+				oauth2Client
+					.withObjectPostProcessor(IssuerValidatingAuthorizationCodeAuthenticationProvider.postProcessor());
+			}
 			if (clientRegistrationRepository instanceof McpClientRegistrationRepository mcpClientRegistrationRepository) {
 				oauth2Client.authorizationCodeGrant(authorizationCode -> {
 					var authRequestResolver = new DefaultOAuth2AuthorizationRequestResolver(
 							mcpClientRegistrationRepository,
 							OAuth2AuthorizationRequestRedirectFilter.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI);
 					authRequestResolver.setAuthorizationRequestCustomizer(
-							mcpAuthorizationRequestCustomizer(mcpClientRegistrationRepository));
+							new McpResourceAuthorizationRequestCustomizer(mcpClientRegistrationRepository));
 
 					authorizationCode.authorizationRequestResolver(authRequestResolver);
 					var tokenResponseClient = new RestClientAuthorizationCodeTokenResponseClient();
 					tokenResponseClient
-						.addParametersConverter(mcpTokenRequestParametersConverter(mcpClientRegistrationRepository));
+						.addParametersConverter(new McpResourceParametersConverter<>(mcpClientRegistrationRepository));
 					authorizationCode.accessTokenResponseClient(tokenResponseClient);
 				});
 			}
@@ -179,6 +189,25 @@ public class McpClientOAuth2Configurer extends AbstractHttpConfigurer<McpClientO
 	}
 
 	/**
+	 * Validate the RFC 9207 {@code iss} parameter of authorization responses, to protect
+	 * against mix-up attacks. Enabled by default.
+	 * <p>
+	 * Disabling it is NOT recommended: it removes the mix-up attack protection. Prefer
+	 * configuring the issuer of the client registration, for example with
+	 * {@code spring.security.oauth2.client.provider.<id>.issuer-uri}. Only disable it as
+	 * a last resort, for authorization servers that send an {@code iss} parameter when
+	 * the client registration has no issuer and the issuer cannot be configured.
+	 * @param issParameterValidation {@code iss} validation enabled if true, disabled
+	 * otherwise.
+	 * @return The {@link McpClientOAuth2Configurer} for further configuration
+	 * @see IssuerValidatingAuthorizationCodeAuthenticationProvider
+	 */
+	public McpClientOAuth2Configurer issParameterValidation(boolean issParameterValidation) {
+		this.issParameterValidation = issParameterValidation;
+		return this;
+	}
+
+	/**
 	 * Sets the URL validator for MCP servers and auth servers.
 	 * @param urlValidator the URL validator.
 	 * @return The {@link McpClientOAuth2Configurer} for further configuration
@@ -231,23 +260,6 @@ public class McpClientOAuth2Configurer extends AbstractHttpConfigurer<McpClientO
 				.authorizationCode(baseUrl + "/authorize/oauth2/code/" + registrationId);
 			clientManager.registerMcpClient(registrationId, mcpServerUrl, registration);
 		}
-	}
-
-	private static Converter<OAuth2AuthorizationCodeGrantRequest, MultiValueMap<String, String>> mcpTokenRequestParametersConverter(
-			McpClientRegistrationRepository mcpClientRegistrationRepository) {
-		return new McpTokenRequestParametersConverter(mcpClientRegistrationRepository);
-	}
-
-	private static Consumer<OAuth2AuthorizationRequest.Builder> mcpAuthorizationRequestCustomizer(
-			McpClientRegistrationRepository mcpClientRegistrationRepository) {
-		return req -> {
-			var baseRequest = req.build();
-			var registrationIdAttr = baseRequest.getAttributes().get(OAuth2ParameterNames.REGISTRATION_ID);
-			if (registrationIdAttr instanceof String registrationId) {
-				req.additionalParameters(params -> params.put("resource",
-						mcpClientRegistrationRepository.findResourceIdByRegistrationId(registrationId)));
-			}
-		};
 	}
 
 	private ClientRegistrationRepository getClientRegistrationRepository(HttpSecurity http) {
@@ -350,28 +362,6 @@ public class McpClientOAuth2Configurer extends AbstractHttpConfigurer<McpClientO
 				doRegisterMcpClients(clientManager, baseUrl, registrations);
 			}
 		});
-	}
-
-	private static class McpTokenRequestParametersConverter
-			implements Converter<OAuth2AuthorizationCodeGrantRequest, MultiValueMap<String, String>> {
-
-		private final McpClientRegistrationRepository mcpClientRegistrationRepository;
-
-		public McpTokenRequestParametersConverter(McpClientRegistrationRepository mcpClientRegistrationRepository) {
-			this.mcpClientRegistrationRepository = mcpClientRegistrationRepository;
-		}
-
-		@Override
-		public MultiValueMap<String, String> convert(OAuth2AuthorizationCodeGrantRequest source) {
-			var params = new LinkedMultiValueMap<String, String>();
-			var resource = mcpClientRegistrationRepository
-				.findResourceIdByRegistrationId(source.getClientRegistration().getRegistrationId());
-			if (resource != null) {
-				params.addIfAbsent("resource", resource);
-			}
-			return params;
-		}
-
 	}
 
 	public static McpClientOAuth2Configurer mcpClientOAuth2() {
