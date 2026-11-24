@@ -21,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.function.Function;
+import java.util.Objects;
 
 import io.modelcontextprotocol.client.transport.customizer.McpSyncHttpClientRequestCustomizer;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -111,9 +112,9 @@ public class OAuth2AuthorizationCodeSyncHttpRequestCustomizer implements McpSync
 	public OAuth2AuthorizationCodeSyncHttpRequestCustomizer(OAuth2AuthorizedClientManager authorizedClientManager,
 			ClientRegistrationRepository clientRegistrationRepository, String clientRegistrationId,
 			Function<McpTransportContext, String> principalResolver) {
-		Assert.notNull(authorizedClientManager, "authorizedClientManager must not be null");
+		this.authorizedClientManager = Objects.requireNonNull(authorizedClientManager,
+				"authorizedClientManager must not be null");
 		Assert.notNull(principalResolver, "principalResolver must not be null");
-		this.authorizedClientManager = authorizedClientManager;
 		this.clientRegistrationRepository = clientRegistrationRepository;
 		this.clientRegistrationId = clientRegistrationId;
 		this.principalResolver = principalResolver;
