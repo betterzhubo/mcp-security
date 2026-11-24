@@ -58,7 +58,8 @@ public final class McpRequestStateCodecs {
 
 	private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
 
-	private static final AuthenticationTrustResolver TRUST_RESOLVER = new AuthenticationTrustResolverImpl();
+	private static final AuthenticationTrustResolver TRUST_RESOLVER =
+			new AuthenticationTrustResolverImpl();
 
 	private McpRequestStateCodecs() {
 	}
