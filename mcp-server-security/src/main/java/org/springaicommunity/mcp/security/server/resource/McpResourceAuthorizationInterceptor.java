@@ -97,8 +97,8 @@ public final class McpResourceAuthorizationInterceptor {
 	 * @return secured resource-template specification
 	 */
 	public static McpServerFeatures.SyncResourceTemplateSpecification secure(
-			McpServerFeatures.SyncResourceTemplateSpecification specification,
-			McpResourceAuthorizationPolicy policy, Supplier<@Nullable Authentication> authenticationResolver) {
+			McpServerFeatures.SyncResourceTemplateSpecification specification, McpResourceAuthorizationPolicy policy,
+			Supplier<@Nullable Authentication> authenticationResolver) {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
@@ -113,16 +113,16 @@ public final class McpResourceAuthorizationInterceptor {
 	}
 
 	/**
-	 * Wrap an asynchronous resource-template handler. The policy is evaluated against
-	 * the concrete URI from each read request, at subscription time.
+	 * Wrap an asynchronous resource-template handler. The policy is evaluated against the
+	 * concrete URI from each read request, at subscription time.
 	 * @param specification original resource-template specification
 	 * @param policy resource authorization policy
 	 * @param authenticationResolver resolves the current caller at subscription time
 	 * @return secured resource-template specification
 	 */
 	public static McpServerFeatures.AsyncResourceTemplateSpecification secure(
-			McpServerFeatures.AsyncResourceTemplateSpecification specification,
-			McpResourceAuthorizationPolicy policy, Supplier<@Nullable Authentication> authenticationResolver) {
+			McpServerFeatures.AsyncResourceTemplateSpecification specification, McpResourceAuthorizationPolicy policy,
+			Supplier<@Nullable Authentication> authenticationResolver) {
 		Assert.notNull(specification, "specification must not be null");
 		Assert.notNull(policy, "policy must not be null");
 		Assert.notNull(authenticationResolver, "authenticationResolver must not be null");
