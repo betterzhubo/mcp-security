@@ -361,6 +361,7 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
+                            <centralSnapshotsUrl>https://central.sonatype.com/repository/maven-snapshots/</centralSnapshotsUrl>
                             <excludeArtifacts>
                                 mcp-security-parent,sample-mcp-client,sample-authorization-server,sample-mcp-server,sample-mcp-client-webclient,sample-mcp-server-secured-tools,sample-mcp-server-api-key,integration-tests
                             </excludeArtifacts>
