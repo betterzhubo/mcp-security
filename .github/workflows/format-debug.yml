@@ -1,0 +1,21 @@
+name: Temporary format debug
+
+on:
+  push:
+    branches:
+      - feature/oauth2-resource-properties
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply Spring Java Format
+        run: mvn --batch-mode --no-transfer-progress -pl mcp-client-security-spring-boot spring-javaformat:apply
+      - name: Print formatted source
+        run: cat mcp-client-security-spring-boot/src/main/java/org/springaicommunity/mcp/security/client/boot/McpOAuth2ClientConfigurations.java
