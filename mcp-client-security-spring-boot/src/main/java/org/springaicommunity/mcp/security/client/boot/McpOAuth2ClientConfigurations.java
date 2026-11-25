@@ -55,10 +55,10 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
  * DCR can be turned off via
  * {@code spring.ai.mcp.client.authorization.dynamic-client-registration.enabled=false}.
  * <p>
- * If client registrations are found under
- * {@code spring.security.oauth2.client.registration}, they are add to the
- * {@link McpClientRegistrationRepository}, but the OAuth2 resource identifier associated
- * will be null.
+ * Client registrations found under {@code spring.security.oauth2.client.registration} are
+ * added to the {@link McpClientRegistrationRepository}. Their resource identifiers can be
+ * configured under {@code spring.ai.mcp.client.authorization.resources}, keyed by
+ * registration ID.
  *
  * @author Daniel Garnier-Moiroux
  * @see <a href=
@@ -72,11 +72,13 @@ class McpOAuth2ClientConfigurations {
 	static class ClientRegistrationRepositoryConfiguration {
 
 		@Bean
-		McpClientRegistrationRepository mcpClientRegistrationRepository(OAuth2ClientProperties properties) {
+		McpClientRegistrationRepository mcpClientRegistrationRepository(OAuth2ClientProperties properties,
+				McpOAuth2ClientProperties mcpProperties) {
 			var repo = new InMemoryMcpClientRegistrationRepository();
 			new OAuth2ClientPropertiesMapper(properties).asClientRegistrations()
 				.values()
-				.forEach(reg -> repo.save(reg, null));
+				.forEach(registration -> repo.save(registration,
+						mcpProperties.getResources().get(registration.getRegistrationId())));
 			return repo;
 		}
 
