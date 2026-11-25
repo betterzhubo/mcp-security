@@ -379,11 +379,9 @@
                                     <goal>sign</goal>
                                 </goals>
                                 <configuration>
-                                    <gpgArguments>
-                                        <arg>--pinentry-mode</arg>
-                                        <arg>loopback</arg>
-                                    </gpgArguments>
-                                    <passphrase>${env.MAVEN_GPG_PASSPHRASE}</passphrase>
+                                    <bestPractices>true</bestPractices>
+                                    <passphraseEnvName>MAVEN_GPG_PASSPHRASE</passphraseEnvName>
+                                    <useAgent>false</useAgent>
                                 </configuration>
                             </execution>
                         </executions>
