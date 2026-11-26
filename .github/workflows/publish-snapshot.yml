@@ -31,12 +31,12 @@ jobs:
 
           should_publish = version.upper().endswith("-SNAPSHOT")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"should_publish={'true' if should_publish else 'false'}\\n")
+              output.write("should_publish=" + ("true" if should_publish else "false") + "\n")
 
           if should_publish:
               with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
-                  env.write(f"SNAPSHOT_GROUP_ID={group_id}\\n")
-                  env.write(f"SNAPSHOT_VERSION={version}\\n")
+                  env.write("SNAPSHOT_GROUP_ID=" + group_id + "\n")
+                  env.write("SNAPSHOT_VERSION=" + version + "\n")
               print(f"Snapshot version detected: {group_id}:{version}")
           else:
               print(f"Skipping Snapshot deployment for release version: {version}")
