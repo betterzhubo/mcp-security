@@ -34,3 +34,53 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
         run: |
           mvn -Pjavadoc -Prelease --batch-mode --update-snapshots deploy
+
+      - name: Verify Sonatype Snapshot metadata and artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_url="https://central.sonatype.com/repository/maven-snapshots/io/github/betterzhubo/mcp-server-security/0.1.15-SNAPSHOT"
+          metadata_url="${base_url}/maven-metadata.xml"
+          metadata_file="${RUNNER_TEMP}/maven-metadata.xml"
+
+          for attempt in $(seq 1 18); do
+            if curl --fail --location --silent --show-error "${metadata_url}" --output "${metadata_file}"; then
+              break
+            fi
+            echo "Snapshot metadata not visible yet (attempt ${attempt}/18)"
+            if [ "${attempt}" -eq 18 ]; then
+              echo "Snapshot metadata was not available after 3 minutes"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          snapshot_version="$(python3 - "${metadata_file}" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse(sys.argv[1]).getroot()
+          versions = root.findall("./versioning/snapshotVersions/snapshotVersion")
+          for item in versions:
+              extension = item.findtext("extension")
+              classifier = item.findtext("classifier")
+              value = item.findtext("value")
+              if extension == "jar" and not classifier and value:
+                  print(value)
+                  break
+          else:
+              raise SystemExit("No timestamped JAR version found in maven-metadata.xml")
+          PY
+          )"
+
+          echo "Resolved Snapshot version: ${snapshot_version}"
+          artifact_base="https://central.sonatype.com/repository/maven-snapshots/io/github/betterzhubo/mcp-server-security/0.1.15-SNAPSHOT/mcp-server-security-${snapshot_version}"
+
+          for extension in jar pom; do
+            artifact_url="${artifact_base}.${extension}"
+            echo "Verifying ${artifact_url}"
+            curl --fail --location --silent --show-error --retry 6 --retry-delay 5 --output /dev/null "${artifact_url}"
+          done
+
+          echo "Sonatype Snapshot metadata, JAR, and POM are externally downloadable."
