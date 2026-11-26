@@ -6,13 +6,44 @@ on:
 
 jobs:
   build:
-    name: Build branch
+    name: Build and publish Snapshot
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
         uses: actions/checkout@v7
 
+      - name: Check Maven project version
+        id: snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("pom.xml").getroot()
+          ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+          group_id = root.findtext("m:groupId", namespaces=ns)
+          version = root.findtext("m:version", namespaces=ns)
+
+          if not group_id or not version:
+              raise SystemExit("Root POM must declare groupId and version")
+
+          should_publish = version.upper().endswith("-SNAPSHOT")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"should_publish={'true' if should_publish else 'false'}\\n")
+
+          if should_publish:
+              with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+                  env.write(f"SNAPSHOT_GROUP_ID={group_id}\\n")
+                  env.write(f"SNAPSHOT_VERSION={version}\\n")
+              print(f"Snapshot version detected: {group_id}:{version}")
+          else:
+              print(f"Skipping Snapshot deployment for release version: {version}")
+          PY
+
       - name: Set up JDK 17
+        if: steps.snapshot.outputs.should_publish == 'true'
         uses: actions/setup-java@v6
         with:
           java-version: '17'
@@ -25,9 +56,11 @@ jobs:
           gpg-passphrase-env-var: MAVEN_GPG_PASSPHRASE
 
       - name: Generate Java docs
+        if: steps.snapshot.outputs.should_publish == 'true'
         run: mvn -Pjavadoc -B javadoc:aggregate
 
       - name: Build with Maven and deploy to Sonatype snapshot repository
+        if: steps.snapshot.outputs.should_publish == 'true'
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
@@ -36,11 +69,13 @@ jobs:
           mvn -Pjavadoc -Prelease --batch-mode --update-snapshots deploy
 
       - name: Verify Sonatype Snapshot metadata and artifacts
+        if: steps.snapshot.outputs.should_publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
 
-          base_url="https://central.sonatype.com/repository/maven-snapshots/io/github/betterzhubo/mcp-server-security/0.1.15-SNAPSHOT"
+          group_path="$(echo "$SNAPSHOT_GROUP_ID" | tr '.' '/')"
+          base_url="https://central.sonatype.com/repository/maven-snapshots/${group_path}/mcp-server-security/${SNAPSHOT_VERSION}"
           metadata_url="${base_url}/maven-metadata.xml"
           metadata_file="${RUNNER_TEMP}/maven-metadata.xml"
 
@@ -75,7 +110,7 @@ jobs:
           )"
 
           echo "Resolved Snapshot version: ${snapshot_version}"
-          artifact_base="https://central.sonatype.com/repository/maven-snapshots/io/github/betterzhubo/mcp-server-security/0.1.15-SNAPSHOT/mcp-server-security-${snapshot_version}"
+          artifact_base="${base_url}/mcp-server-security-${snapshot_version}"
 
           for extension in jar pom; do
             artifact_url="${artifact_base}.${extension}"
