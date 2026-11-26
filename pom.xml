@@ -6,7 +6,7 @@
 
     <groupId>io.github.betterzhubo</groupId>
     <artifactId>mcp-security-parent</artifactId>
-    <version>0.1.15-SNAPSHOT</version>
+    <version>0.1.15</version>
 
     <packaging>pom</packaging>
     <url>https://github.com/spring-ai-community/mcp-security</url>
