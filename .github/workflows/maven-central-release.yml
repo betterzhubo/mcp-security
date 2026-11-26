@@ -3,35 +3,111 @@ name: Release to Maven Central
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish:
+    name: Build, publish, and verify release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      
-      - name: Set up Java
-        uses: actions/setup-java@v5
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
           server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
+          server-username-env-var: MAVEN_USERNAME
+          server-password-env-var: MAVEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_SECRET_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
-          
-      - name: Build and Test
-        run: mvn clean verify
+          gpg-passphrase-env-var: MAVEN_GPG_PASSPHRASE
 
-      - name: Publish to Maven Central
+      - name: Validate release coordinates
+        id: release
+        shell: bash
         run: |
-          mvn --batch-mode \
-            -Prelease \
-            -Pjavadoc \
-            -DskipTests=true \
-            deploy
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          import re
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("pom.xml").getroot()
+          ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+          group_id = root.findtext("m:groupId", namespaces=ns)
+          artifact_id = root.findtext("m:artifactId", namespaces=ns)
+          version = root.findtext("m:version", namespaces=ns)
+
+          if not group_id or not artifact_id or not version:
+              raise SystemExit("Root POM must declare groupId, artifactId, and version")
+          if "SNAPSHOT" in version.upper():
+              raise SystemExit(f"Refusing to publish a SNAPSHOT version: {version}")
+          if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-.][0-9A-Za-z.-]+)?", version):
+              raise SystemExit(f"Version is not a valid release version: {version}")
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"RELEASE_GROUP_ID={group_id}\n")
+              env.write(f"RELEASE_VERSION={version}\n")
+
+          print(f"Validated release coordinates: {group_id}:{artifact_id}:{version}")
+          PY
+
+      - name: Build, test, sign, and publish
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+            -Prelease \
+            -Pjavadoc \
+            --update-snapshots \
+            clean deploy
+
+      - name: Verify release artifacts on Maven Central
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          group_path="$(echo "$RELEASE_GROUP_ID" | tr '.' '/')"
+          artifact_id="mcp-server-security"
+          version="${RELEASE_VERSION}"
+          base_url="https://repo.maven.apache.org/maven2/${group_path}/${artifact_id}/${version}/${artifact_id}-${version}"
+
+          artifacts=(
+            "${base_url}.pom"
+            "${base_url}.pom.asc"
+            "${base_url}.jar"
+            "${base_url}.jar.asc"
+            "${base_url}-sources.jar"
+            "${base_url}-sources.jar.asc"
+            "${base_url}-javadoc.jar"
+            "${base_url}-javadoc.jar.asc"
+          )
+
+          for attempt in $(seq 1 30); do
+            missing=()
+            for artifact_url in "${artifacts[@]}"; do
+              if ! curl --fail --location --silent --show-error --output /dev/null "${artifact_url}"; then
+                missing+=("${artifact_url}")
+              fi
+            done
+
+            if [ "${#missing[@]}" -eq 0 ]; then
+              echo "Maven Central release artifacts and detached signatures are downloadable."
+              exit 0
+            fi
+
+            echo "Maven Central has not exposed all release files yet (attempt ${attempt}/30)."
+            printf 'Not available yet: %s\n' "${missing[@]}"
+            if [ "${attempt}" -lt 30 ]; then
+              sleep 30
+            fi
+          done
+
+          echo "Timed out waiting for Maven Central release artifacts."
+          exit 1
